@@ -81,3 +81,16 @@ revoke execute on function public.handle_new_user() from public, anon, authentic
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- Backfill: users created before this migration (or while the trigger was
+-- missing) would otherwise have no profile and could never get one, since
+-- clients have no INSERT privilege.
+insert into public.profiles (id, name)
+select
+  u.id,
+  nullif(
+    left(coalesce(u.raw_user_meta_data ->> 'name', u.raw_user_meta_data ->> 'full_name', ''), 80),
+    ''
+  )
+from auth.users u
+on conflict (id) do nothing;

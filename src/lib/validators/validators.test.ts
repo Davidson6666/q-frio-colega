@@ -43,6 +43,12 @@ describe("signupSchema", () => {
     expect(signupSchema.safeParse({ ...valid, password: "a".repeat(72) }).success).toBe(true);
   });
 
+  it("measures the password limit in bytes, not characters", () => {
+    // 40 accented letters = 40 characters but 80 bytes, past bcrypt's 72-byte limit.
+    expect(signupSchema.safeParse({ ...valid, password: "á".repeat(40) }).success).toBe(false);
+    expect(signupSchema.safeParse({ ...valid, password: "á".repeat(36) }).success).toBe(true);
+  });
+
   it("rejects a filled honeypot", () => {
     expect(signupSchema.safeParse({ ...valid, company: "spam" }).success).toBe(false);
   });

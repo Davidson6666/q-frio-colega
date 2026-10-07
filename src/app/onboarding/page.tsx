@@ -33,12 +33,15 @@ async function OnboardingContent() {
   if (!user) redirect("/login");
 
   const profile = await getProfile();
+  // Every user has a profile row (trigger + backfill). A missing one is a setup
+  // error to surface, not a new user to onboard.
+  if (!profile) throw new Error(`No profile row for user ${user.id}`);
   if (isOnboardingComplete(profile)) redirect("/app");
 
   return (
     <OnboardingForm
-      initialServices={profile?.services_offered ?? []}
-      initialCity={profile?.default_city ?? ""}
+      initialServices={profile.services_offered}
+      initialCity={profile.default_city ?? ""}
     />
   );
 }

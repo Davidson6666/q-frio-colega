@@ -22,13 +22,20 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
   if (!user) return null;
 
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("profiles")
     .select(
       "id, name, whatsapp, services_offered, default_city, plan, credits_balance, credits_renew_at, created_at",
     )
     .eq("id", user.id)
     .maybeSingle();
+
+  // A failed query must never look like "no profile": callers would treat the
+  // user as new and send them through onboarding, where saving would overwrite
+  // their real data. Let the error boundary handle it instead.
+  if (error) {
+    throw new Error(`Failed to load profile: ${error.message}`);
+  }
 
   return (data as Profile | null) ?? null;
 });

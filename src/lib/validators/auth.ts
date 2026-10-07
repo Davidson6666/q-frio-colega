@@ -15,11 +15,14 @@ export const loginSchema = z.object({
 export const signupSchema = z.object({
   name: nameField,
   email: emailField,
-  // 72 is bcrypt's byte limit; anything longer is silently truncated by the provider.
+  // bcrypt only uses the first 72 BYTES. Count bytes, not characters, so accents
+  // and emoji cannot push a password past the limit and get silently truncated.
   password: z
     .string()
     .min(8, "A senha precisa ter pelo menos 8 caracteres.")
-    .max(72, "A senha pode ter no máximo 72 caracteres."),
+    .refine((value) => new TextEncoder().encode(value).length <= 72, {
+      message: "A senha é longa demais. Use até 72 caracteres comuns (acentos e símbolos contam mais).",
+    }),
   terms: z.literal("on", "Aceite os termos para criar a conta."),
   // Honeypot: real users never fill this hidden field.
   company: z.string().max(0).optional(),

@@ -21,6 +21,13 @@ describe("normalizeBrazilPhone", () => {
     expect(normalizeBrazilPhone("(05) 99999-8888")).toBeNull();
   });
 
+  it("rejects area codes that are not assigned in Brazil", () => {
+    expect(normalizeBrazilPhone("(20) 99999-8888")).toBeNull();
+    expect(normalizeBrazilPhone("(23) 99999-8888")).toBeNull();
+    expect(normalizeBrazilPhone("(90) 99999-8888")).toBeNull();
+    expect(normalizeBrazilPhone("(11) 99999-8888")).toBe("5511999998888");
+  });
+
   it("rejects a mobile number that does not start with 9", () => {
     expect(normalizeBrazilPhone("(44) 89999-8888")).toBeNull();
   });

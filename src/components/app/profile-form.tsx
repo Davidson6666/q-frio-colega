@@ -6,6 +6,7 @@ import { ChipCheckbox, FieldError, TextField } from "@/components/ui/fields";
 import { FormAlert } from "@/components/ui/form-alert";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { SERVICES } from "@/config/services";
+import { useFocusFirstError } from "@/lib/hooks/use-focus-first-error";
 import { initialActionState } from "@/lib/validators";
 
 export function ProfileForm({
@@ -14,12 +15,13 @@ export function ProfileForm({
   initial: { name: string; services: string[]; city: string; whatsapp: string };
 }) {
   const [state, action] = useActionState(updateProfile, initialActionState);
+  const formRef = useFocusFirstError(state);
 
   const values = state.values;
   const services = (values?.services as string[] | undefined) ?? initial.services;
 
   return (
-    <form action={action} className="grid gap-8" noValidate>
+    <form ref={formRef} action={action} className="grid gap-8" noValidate>
       <FormAlert error={state.error} message={state.ok ? state.message : undefined} />
 
       <TextField
@@ -69,7 +71,7 @@ export function ProfileForm({
       </div>
 
       <div>
-        <SubmitButton size="lg" pendingLabel="Salvando...">
+        <SubmitButton size="lg" pendingLabel="Salvando…">
           Salvar alterações
         </SubmitButton>
       </div>

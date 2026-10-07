@@ -1,6 +1,10 @@
 import type { PlanId } from "@/config/plans";
 
-/** Mirrors the `profiles` table (supabase/migrations/0001_profiles.sql). */
+/**
+ * Mirrors the `profiles` table (supabase/migrations/20261007000000_profiles.sql).
+ * Hand-written for now: once a Supabase project exists, generate it with
+ * `supabase gen types typescript` and type the clients with the result.
+ */
 export interface Profile {
   id: string;
   name: string | null;

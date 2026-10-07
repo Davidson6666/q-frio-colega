@@ -63,10 +63,17 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (isAuthenticated && matches(pathname, AUTH_PAGES)) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/app";
-    url.search = "";
-    return redirectWithCookies(url, response);
+    // getClaims() only checks the JWT signature locally, so a revoked session
+    // (signed out elsewhere, user deleted) still looks valid until it expires.
+    // AuthGate validates against the Auth server and would send that user back
+    // to /login, so we must agree with it here or the two redirects loop.
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData.user) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/app";
+      url.search = "";
+      return redirectWithCookies(url, response);
+    }
   }
 
   return response;

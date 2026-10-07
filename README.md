@@ -36,9 +36,12 @@ Sem as variáveis do Supabase o site público funciona normalmente; login e cada
 2. Aplique a migration em [supabase/migrations/](supabase/migrations/): cole o conteúdo do arquivo no **SQL Editor** e execute, ou use `supabase db push` com o CLI.
 3. Em **Authentication > URL Configuration**:
    - Site URL: `http://localhost:3000` (e a URL de produção depois).
-   - Redirect URLs: adicione `http://localhost:3000/auth/callback`.
+   - Redirect URLs: adicione exatamente `http://localhost:3000/auth/callback` (sem query string; o destino pós-login vai em cookie).
+   - Em produção, defina `NEXT_PUBLIC_SITE_URL` com a URL pública. Sem ela o app recusa montar os links de autenticação, para não mandar e-mails apontando para `localhost`.
 4. (Opcional) **Authentication > Providers > Google**: ative e informe o Client ID e o Secret criados no Google Cloud. Sem isso o botão "Continuar com o Google" volta para o login com uma mensagem de erro.
 5. Em **Authentication > Providers > Email**, decida se exige confirmação de e-mail. Com confirmação ligada, o cadastro mostra "enviamos um link"; desligada, o usuário entra direto no onboarding.
+
+> **Confirmação de e-mail em outro aparelho (opcional):** o fluxo padrão (PKCE) só funciona no mesmo navegador em que a conta foi criada. Para funcionar em qualquer aparelho, em **Authentication > Email Templates > Confirm signup**, troque o link por `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=signup`. O callback já aceita os dois formatos.
 
 > A chave `service_role` nunca vai em variável `NEXT_PUBLIC_*` e não é usada nesta fase.
 

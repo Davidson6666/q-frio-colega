@@ -21,17 +21,13 @@ export function toFieldErrors(error: z.ZodError): FieldErrors {
   return z.flattenError(error).fieldErrors as FieldErrors;
 }
 
-/** Reads a FormData into a plain object; repeated keys become arrays only for `arrayKeys`. */
-export function formDataToObject(
-  formData: FormData,
-  arrayKeys: string[] = [],
-): Record<string, FormDataEntryValue | FormDataEntryValue[]> {
-  const out: Record<string, FormDataEntryValue | FormDataEntryValue[]> = {};
-  for (const key of new Set(formData.keys())) {
-    out[key] = arrayKeys.includes(key) ? formData.getAll(key) : (formData.get(key) as FormDataEntryValue);
-  }
-  for (const key of arrayKeys) {
-    if (!(key in out)) out[key] = [];
-  }
-  return out;
+/** Single string field from a FormData; missing or file entries become "". */
+export function formString(formData: FormData, key: string): string {
+  const value = formData.get(key);
+  return typeof value === "string" ? value : "";
+}
+
+/** All string values of a repeated field (e.g. checkboxes). */
+export function formStrings(formData: FormData, key: string): string[] {
+  return formData.getAll(key).filter((v): v is string => typeof v === "string");
 }

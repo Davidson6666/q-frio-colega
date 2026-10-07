@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth/session";
 import { saveProfile } from "@/lib/profile/save";
-import { toFieldErrors, type ActionState } from "@/lib/validators";
+import { formString, formStrings, toFieldErrors, type ActionState } from "@/lib/validators";
 import { onboardingSchema } from "@/lib/validators/profile";
 
 export async function completeOnboarding(
@@ -14,9 +14,9 @@ export async function completeOnboarding(
   if (!user) redirect("/login");
 
   const raw = {
-    services: formData.getAll("services").map(String),
-    city: String(formData.get("city") ?? ""),
-    whatsapp: String(formData.get("whatsapp") ?? ""),
+    services: formStrings(formData, "services"),
+    city: formString(formData, "city"),
+    whatsapp: formString(formData, "whatsapp"),
   };
 
   const parsed = onboardingSchema.safeParse(raw);

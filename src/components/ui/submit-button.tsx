@@ -10,7 +10,7 @@ import { Button, type ButtonVariants } from "./button";
  */
 export function SubmitButton({
   children,
-  pendingLabel = "Enviando...",
+  pendingLabel = "Enviando…",
   variant,
   size,
   className,

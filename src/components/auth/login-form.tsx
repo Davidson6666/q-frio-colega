@@ -7,13 +7,15 @@ import { FormAlert } from "@/components/ui/form-alert";
 import { TextField } from "@/components/ui/fields";
 import { PasswordField } from "@/components/ui/password-field";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { useFocusFirstError } from "@/lib/hooks/use-focus-first-error";
 import { initialActionState } from "@/lib/validators";
 
 export function LoginForm({ next, notice }: { next: string; notice?: string }) {
   const [state, action] = useActionState(signIn, initialActionState);
+  const formRef = useFocusFirstError(state);
 
   return (
-    <form action={action} className="grid gap-5" noValidate>
+    <form ref={formRef} action={action} className="grid gap-5" noValidate>
       <input type="hidden" name="next" value={next} />
 
       <FormAlert error={state.error ?? notice} />
@@ -24,6 +26,8 @@ export function LoginForm({ next, notice }: { next: string; notice?: string }) {
         type="email"
         autoComplete="username"
         inputMode="email"
+        spellCheck={false}
+        autoCapitalize="none"
         required
         defaultValue={state.values?.email as string | undefined}
         error={state.fieldErrors?.email}
@@ -34,7 +38,7 @@ export function LoginForm({ next, notice }: { next: string; notice?: string }) {
         error={state.fieldErrors?.password}
       />
 
-      <SubmitButton size="lg" pendingLabel="Entrando..." className="mt-1 w-full">
+      <SubmitButton size="lg" pendingLabel="Entrando…" className="mt-1 w-full">
         Entrar
       </SubmitButton>
 

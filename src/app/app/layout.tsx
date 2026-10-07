@@ -22,7 +22,11 @@ async function AuthGate({ children }: { children: React.ReactNode }) {
   if (!user) redirect("/login");
 
   const profile = await getProfile();
-  if (!profile || !isOnboardingComplete(profile)) redirect("/onboarding");
+  // Every auth user gets a profile row from a database trigger (plus a backfill
+  // in the migration). Sending a user without one to onboarding cannot fix it,
+  // because clients have no INSERT privilege: fail loudly instead of looping.
+  if (!profile) throw new Error(`No profile row for user ${user.id}`);
+  if (!isOnboardingComplete(profile)) redirect("/onboarding");
 
   return (
     <AppShell profile={profile} email={user.email}>

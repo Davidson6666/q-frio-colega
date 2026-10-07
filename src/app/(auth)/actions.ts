@@ -1,11 +1,13 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { siteConfig } from "@/config/site";
+import { getAuthBaseUrl } from "@/config/site";
+import { AUTH_NEXT_COOKIE } from "@/lib/auth/constants";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import { loginSchema, signupSchema } from "@/lib/validators/auth";
-import { toFieldErrors, type ActionState } from "@/lib/validators";
+import { formString, toFieldErrors, type ActionState } from "@/lib/validators";
 import { safeNextPath } from "@/lib/utils";
 
 const NOT_CONFIGURED: ActionState = {
@@ -14,18 +16,16 @@ const NOT_CONFIGURED: ActionState = {
     "O Supabase ainda não foi configurado neste ambiente. Veja o passo a passo no README.",
 };
 
-function text(formData: FormData, key: string) {
-  const value = formData.get(key);
-  return typeof value === "string" ? value : "";
-}
-
 export async function signIn(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
   if (!isSupabaseConfigured()) return NOT_CONFIGURED;
 
-  const raw = { email: text(formData, "email"), password: text(formData, "password") };
+  const raw = {
+    email: formString(formData, "email"),
+    password: formString(formData, "password"),
+  };
   const parsed = loginSchema.safeParse(raw);
   if (!parsed.success) {
     return {
@@ -47,7 +47,7 @@ export async function signIn(
     return { ok: false, error: message, values: { email: raw.email } };
   }
 
-  redirect(safeNextPath(formData.get("next")));
+  redirect(safeNextPath(formString(formData, "next")));
 }
 
 export async function signUp(
@@ -57,11 +57,11 @@ export async function signUp(
   if (!isSupabaseConfigured()) return NOT_CONFIGURED;
 
   const raw = {
-    name: text(formData, "name"),
-    email: text(formData, "email"),
-    password: text(formData, "password"),
-    terms: text(formData, "terms"),
-    company: text(formData, "company"),
+    name: formString(formData, "name"),
+    email: formString(formData, "email"),
+    password: formString(formData, "password"),
+    terms: formString(formData, "terms"),
+    company: formString(formData, "company"),
   };
 
   // Honeypot filled: a bot. Answer as if it worked, create nothing.
@@ -85,7 +85,9 @@ export async function signUp(
     password,
     options: {
       data: { name },
-      emailRedirectTo: `${siteConfig.url}/auth/callback?next=/onboarding`,
+      // No query string: it must match Supabase's redirect allow-list exactly.
+      // New accounts reach onboarding through the AuthGate in /app.
+      emailRedirectTo: `${getAuthBaseUrl()}/auth/callback`,
     },
   });
 
@@ -111,13 +113,21 @@ export async function signUp(
 export async function signInWithGoogle(formData: FormData): Promise<void> {
   if (!isSupabaseConfigured()) redirect("/login?erro=config");
 
-  const next = safeNextPath(formData.get("next"));
+  // Remember the destination in a short-lived cookie instead of the callback
+  // URL, which has to match the Supabase allow-list without a query string.
+  const cookieStore = await cookies();
+  cookieStore.set(AUTH_NEXT_COOKIE, safeNextPath(formString(formData, "next")), {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 600,
+  });
+
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
-    options: {
-      redirectTo: `${siteConfig.url}/auth/callback?next=${encodeURIComponent(next)}`,
-    },
+    options: { redirectTo: `${getAuthBaseUrl()}/auth/callback` },
   });
 
   if (error || !data.url) redirect("/login?erro=oauth");

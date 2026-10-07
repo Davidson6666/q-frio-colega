@@ -13,6 +13,13 @@ describe("safeNextPath", () => {
     expect(safeNextPath("/\\evil.com")).toBe("/app");
   });
 
+  it("blocks control characters that URL parsers strip", () => {
+    expect(safeNextPath("/\t/evil.com")).toBe("/app");
+    expect(safeNextPath("/\n/evil.com")).toBe("/app");
+    expect(safeNextPath("/\r/evil.com")).toBe("/app");
+    expect(safeNextPath("/\u0000/evil.com")).toBe("/app");
+  });
+
   it("falls back for non-strings and empty values", () => {
     expect(safeNextPath(undefined)).toBe("/app");
     expect(safeNextPath(["/a"])).toBe("/app");

@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Entrar" };
 
 const NOTICES: Record<string, string> = {
   oauth: "Não foi possível entrar com o Google. Tente novamente ou use e-mail e senha.",
-  link: "O link expirou ou já foi usado. Entre com e-mail e senha.",
+  link: "Não conseguimos validar o link, ou ele já foi usado. Se você já confirmou o e-mail, é só entrar.",
   config:
     "O Supabase ainda não foi configurado neste ambiente. Veja o passo a passo no README.",
 };

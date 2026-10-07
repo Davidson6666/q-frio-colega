@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useState } from "react";
 import { completeOnboarding } from "@/app/onboarding/actions";
 import { Button } from "@/components/ui/button";
 import { ChipCheckbox, FieldError, TextField } from "@/components/ui/fields";
 import { FormAlert } from "@/components/ui/form-alert";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { SERVICES } from "@/config/services";
+import { useFocusFirstError } from "@/lib/hooks/use-focus-first-error";
 import { initialActionState } from "@/lib/validators";
 
 const TOTAL_STEPS = 3;
@@ -21,7 +22,7 @@ export function OnboardingForm({
   const [state, action] = useActionState(completeOnboarding, initialActionState);
   const [step, setStep] = useState(0);
   const [stepError, setStepError] = useState<string>();
-  const formRef = useRef<HTMLFormElement>(null);
+  const formRef = useFocusFirstError(state);
 
   const selectedServices = (state.values?.services as string[] | undefined) ?? initialServices;
   const city = (state.values?.city as string | undefined) ?? initialCity;
@@ -54,7 +55,7 @@ export function OnboardingForm({
   // Enter must advance the wizard, never submit it half-filled.
   function onKeyDown(event: React.KeyboardEvent<HTMLFormElement>) {
     if (event.key !== "Enter" || step >= TOTAL_STEPS - 1) return;
-    if (event.target instanceof HTMLInputElement && event.target.type !== "checkbox") {
+    if (event.target instanceof HTMLInputElement) {
       event.preventDefault();
       next();
     }
@@ -153,7 +154,7 @@ export function OnboardingForm({
             Continuar
           </Button>
         ) : (
-          <SubmitButton size="lg" pendingLabel="Salvando..." className="flex-1">
+          <SubmitButton size="lg" pendingLabel="Salvando…" className="flex-1">
             Concluir
           </SubmitButton>
         )}

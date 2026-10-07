@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth/session";
 import { saveProfile } from "@/lib/profile/save";
-import { toFieldErrors, type ActionState } from "@/lib/validators";
+import { formString, formStrings, toFieldErrors, type ActionState } from "@/lib/validators";
 import { profileSchema } from "@/lib/validators/profile";
 
 export async function updateProfile(
@@ -15,10 +15,10 @@ export async function updateProfile(
   if (!user) redirect("/login");
 
   const raw = {
-    name: String(formData.get("name") ?? ""),
-    services: formData.getAll("services").map(String),
-    city: String(formData.get("city") ?? ""),
-    whatsapp: String(formData.get("whatsapp") ?? ""),
+    name: formString(formData, "name"),
+    services: formStrings(formData, "services"),
+    city: formString(formData, "city"),
+    whatsapp: formString(formData, "whatsapp"),
   };
 
   const parsed = profileSchema.safeParse(raw);

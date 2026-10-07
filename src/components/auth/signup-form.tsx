@@ -7,10 +7,12 @@ import { FieldError, TextField } from "@/components/ui/fields";
 import { FormAlert } from "@/components/ui/form-alert";
 import { PasswordField } from "@/components/ui/password-field";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { useFocusFirstError } from "@/lib/hooks/use-focus-first-error";
 import { initialActionState } from "@/lib/validators";
 
 export function SignupForm() {
   const [state, action] = useActionState(signUp, initialActionState);
+  const formRef = useFocusFirstError(state);
 
   // Account created, waiting for e-mail confirmation: replace the form.
   if (state.ok && state.message) {
@@ -32,7 +34,7 @@ export function SignupForm() {
   }
 
   return (
-    <form action={action} className="grid gap-5" noValidate>
+    <form ref={formRef} action={action} className="grid gap-5" noValidate>
       <FormAlert error={state.error} />
 
       {/* Honeypot: hidden from people and assistive tech, bots fill it. */}
@@ -58,6 +60,8 @@ export function SignupForm() {
         type="email"
         autoComplete="username"
         inputMode="email"
+        spellCheck={false}
+        autoCapitalize="none"
         required
         defaultValue={state.values?.email as string | undefined}
         error={state.fieldErrors?.email}
@@ -104,7 +108,7 @@ export function SignupForm() {
         <FieldError id="field-terms-error" error={state.fieldErrors?.terms} />
       </div>
 
-      <SubmitButton size="lg" pendingLabel="Criando conta..." className="mt-1 w-full">
+      <SubmitButton size="lg" pendingLabel="Criando conta…" className="mt-1 w-full">
         Criar conta
       </SubmitButton>
 

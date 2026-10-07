@@ -42,7 +42,7 @@ export function Faq() {
             open={index === 0}
             className="group border-b border-line first:border-t"
           >
-            <summary className="flex min-h-14 cursor-pointer items-center justify-between gap-6 py-5 text-lg font-medium tracking-tight">
+            <summary className="flex min-h-14 cursor-pointer items-center justify-between gap-6 py-5 text-lg font-medium tracking-tight transition-colors hover:text-accent-ink">
               {item.q}
               <Plus
                 size={22}
