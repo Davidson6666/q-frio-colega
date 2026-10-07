@@ -1,6 +1,6 @@
 import type { BadgeTone } from "@/components/ui/badge";
 
-/** Website health classification produced by the analysis module (Phase 3). */
+/** Website health classification. */
 export type WebsiteStatus =
   | "NO_WEBSITE"
   | "SOCIAL_ONLY"
@@ -10,33 +10,28 @@ export type WebsiteStatus =
   | "OK"
   | "UNKNOWN";
 
-export const WEBSITE_STATUS_META: Record<
-  WebsiteStatus,
-  { label: string; tone: BadgeTone }
-> = {
+/** What the UI shows while a site is still being checked. */
+export type ResultStatus = WebsiteStatus | "CHECKING";
+
+export const STATUS_META: Record<ResultStatus, { label: string; tone: BadgeTone }> = {
   NO_WEBSITE: { label: "Sem site", tone: "danger" },
-  BROKEN: { label: "Site fora do ar", tone: "danger" },
+  BROKEN: { label: "Site com problema", tone: "danger" },
   SOCIAL_ONLY: { label: "Só rede social", tone: "warn" },
   NOT_MOBILE: { label: "Ruim no celular", tone: "warn" },
   SLOW: { label: "Site lento", tone: "warn" },
-  OK: { label: "Site ok", tone: "neutral" },
+  OK: { label: "Site ok", tone: "accent" },
   UNKNOWN: { label: "Verificar manualmente", tone: "neutral" },
+  CHECKING: { label: "Verificando…", tone: "neutral" },
 };
 
-export type OpportunityLevel = "low" | "medium" | "high";
-
-export const OPPORTUNITY_LEVEL_META: Record<
-  OpportunityLevel,
-  { label: string; tone: BadgeTone }
-> = {
-  high: { label: "Oportunidade alta", tone: "accent" },
-  medium: { label: "Oportunidade média", tone: "neutral" },
-  low: { label: "Oportunidade baixa", tone: "neutral" },
-};
-
-/** Score thresholds from the product spec: 0-39 low, 40-69 medium, 70-100 high. */
-export function levelFromScore(score: number): OpportunityLevel {
-  if (score >= 70) return "high";
-  if (score >= 40) return "medium";
-  return "low";
-}
+/** Order used by the filter chips and when sorting (most promising first). */
+export const STATUS_ORDER: ResultStatus[] = [
+  "NO_WEBSITE",
+  "BROKEN",
+  "SOCIAL_ONLY",
+  "NOT_MOBILE",
+  "SLOW",
+  "UNKNOWN",
+  "OK",
+  "CHECKING",
+];

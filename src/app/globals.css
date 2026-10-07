@@ -188,31 +188,6 @@ textarea:user-invalid {
   }
 }
 
-/* Utilitario: esconde visualmente mas mantem na arvore de acessibilidade. */
-.visually-hidden {
-  position: absolute;
-  clip-path: inset(50%);
-  overflow: hidden;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  border: 0;
-  white-space: nowrap;
-}
-
-/* Faixa horizontal com snap, sem barra visivel. */
-.snap-row {
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-}
-.snap-row::-webkit-scrollbar {
-  display: none;
-}
-.snap-row > * {
-  scroll-snap-align: start;
-}
-
 /*
   Theme toggle icon. The icon shown is the one for the theme you would switch to,
   resolved purely in CSS so there is no flash before hydration.
@@ -233,75 +208,4 @@ textarea:user-invalid {
 }
 :root[data-theme="dark"] .theme-icon-moon {
   display: none;
-}
-
-/*
-  Mobile menu: native popover sheet. Enter/exit use @starting-style and
-  allow-discrete transitions, so no JS animation is needed.
-*/
-.menu-sheet {
-  opacity: 0;
-  transform: translateY(-0.75rem);
-  transition:
-    opacity 0.4s var(--ease-spring),
-    transform 0.4s var(--ease-spring),
-    display 0.4s allow-discrete,
-    overlay 0.4s allow-discrete;
-}
-.menu-sheet:popover-open {
-  opacity: 1;
-  transform: none;
-}
-@starting-style {
-  .menu-sheet:popover-open {
-    opacity: 0;
-    transform: translateY(-0.75rem);
-  }
-}
-
-/* FAQ disclosure marker rotation. */
-details > summary {
-  list-style: none;
-}
-details > summary::-webkit-details-marker {
-  display: none;
-}
-details[open] > summary .faq-icon {
-  transform: rotate(45deg);
-}
-
-/*
-  Staggered entrance (hero). Reading order is the message: headline, subtext,
-  actions, then the visual. Collapses to no animation with reduced motion.
-*/
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(1.25rem);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-@media (prefers-reduced-motion: no-preference) {
-  .rise {
-    animation: rise 0.9s var(--ease-spring) both;
-    animation-delay: calc(var(--i, 0) * 90ms);
-  }
-}
-
-/*
-  Scroll reveal. Progressive enhancement: only browsers with scroll-driven
-  animations fade elements in as they enter the viewport; everywhere else (and
-  without JS) the content is simply visible. Never hide content by default.
-*/
-@media (prefers-reduced-motion: no-preference) {
-  @supports (animation-timeline: view()) {
-    .reveal {
-      animation: rise linear both;
-      animation-timeline: view();
-      animation-range: entry 0% entry 40%;
-    }
-  }
 }

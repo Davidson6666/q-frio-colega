@@ -2,22 +2,22 @@
 
 ## Projeto
 
-Garimpo: SaaS de prospecção para freelancers brasileiros. A especificação original (fases, planos, modelo de dados) foi fornecida pelo autor; as decisões tomadas estão em `docs/DECISOES.md`.
+Garimpo: ferramenta **pessoal** (uma tela, protegida por senha) que lista lojas por estado, cidade e tipo e classifica o site de cada uma (sem site, só rede social, com problema, lento, ruim no celular, ok). Não é um produto: não há planos, cadastro, pagamento nem banco de dados. Decisões em `docs/DECISOES.md`.
 
-- Trabalhar **por fases** (oito fases: fundação, planos e créditos, busca e análise, IA, leads e agente, portfólio, pagamentos, acabamento) e parar ao fim de cada uma para validação.
-- Interface 100% em português do Brasil. Código, nomes e comentários em inglês.
-- TypeScript estrito. Validação de toda entrada com Zod, no servidor.
-- Segredos só em `.env.local` (nunca no código). Chaves de API só no servidor.
-- Planos, créditos e limites vivem em `src/config/plans.ts` e em nenhum outro lugar.
+- Interface em português do Brasil. Código, nomes e comentários em inglês.
+- TypeScript estrito. Validação de entrada com Zod, no servidor.
+- Segredos só em `.env.local`. A chave do Google nunca vai para o navegador.
 - Commits pequenos, Conventional Commits.
 
 ## Convenções técnicas
 
-- Next 16 com **Cache Components**: tudo que lê `cookies()`/`searchParams` fica dentro de `<Suspense>`. Sem `new Date()`/`Math.random()` no render. A documentação do Next está em `node_modules/next/dist/docs`.
+- Next 16 com **Cache Components**: o que lê `cookies()`/`searchParams` precisa de `<Suspense>`. Sem `new Date()`/`Math.random()` no render. Documentação do Next em `node_modules/next/dist/docs`.
 - Convenção `proxy.ts` (não `middleware.ts`).
-- Tema por variáveis CSS em `src/app/globals.css`; um único acento esmeralda; sem `dark:` espalhado.
+- A checagem de sites (`src/lib/analysis`) visita URLs de terceiros: **nunca** enfraquecer a proteção SSRF. As opções `allowPrivateNetwork` e `unsafeAllowHosts` são só para testes e nenhuma rota pode passá-las.
+- Regra de produto: **nunca afirmar "com problema" quando houver dúvida** (timeout, 403, Cloudflare, cadeia de certificado incompleta = "Verificar manualmente").
+- Tema por variáveis CSS em `src/app/globals.css`; um único acento esmeralda.
 - Ícones: Phosphor (`@phosphor-icons/react/dist/ssr` em Server Components). Fonte: Geist.
-- Texto da interface sem travessão (em dash) e sem emoji.
+- Texto da interface sem travessão (em dash) e sem emoji; reticências com o caractere `…`.
 - Antes de commitar: `npm run typecheck && npm run lint && npm test`.
 
 ## Skills disponíveis

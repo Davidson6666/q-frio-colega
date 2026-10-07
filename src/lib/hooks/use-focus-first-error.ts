@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { ActionState } from "@/lib/validators";
+import type { ActionState } from "@/lib/form";
 
 /**
  * After a failed submit, moves focus to the first invalid field so keyboard and
@@ -11,7 +11,7 @@ export function useFocusFirstError(state: ActionState) {
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    if (!state.fieldErrors) return;
+    if (!state.error) return;
     formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
   }, [state]);
 

@@ -1,71 +1,76 @@
 # Garimpo
 
-Plataforma de prospecção para freelancers e pequenas agências que vendem serviços para empresas locais. O usuário informa o que vende e onde, e a plataforma encontra empresas, diagnostica a presença digital de cada uma e entrega a oportunidade com uma mensagem de abertura pronta.
+Ferramenta pessoal para achar lojas que precisam de site. Você escolhe **estado, cidade e tipo de loja**, e ela lista os estabelecimentos já classificados:
 
-> O nome "Garimpo" é provisório. Troque em [src/config/site.ts](src/config/site.ts).
+| Situação | Quando |
+|---|---|
+| Sem site | O Google não tem site cadastrado para a loja |
+| Só rede social | O link é Instagram, Facebook, WhatsApp, Linktree, iFood etc. |
+| Site com problema | Domínio inexistente, conexão recusada, 404, erro 500, certificado vencido ou de outro domínio, loop de redirecionamento |
+| Site lento | Mais de 4 s para começar a responder |
+| Ruim no celular | Abre, mas sem a meta `viewport` |
+| Verificar manualmente | O site bloqueou o teste automático ou não respondeu: **não dá para afirmar** que está fora do ar |
+| Site ok | Abre normalmente |
 
-**Status:** Fase 1 (fundação) concluída. As decisões de projeto estão em [docs/DECISOES.md](docs/DECISOES.md).
-
-## Stack
-
-Next.js 16 (App Router, Cache Components) · React 19 · TypeScript estrito · Tailwind CSS v4 · Supabase (Postgres, Auth, RLS) · Zod · Vitest · Playwright
+Dá para filtrar por situação, ordenar, marcar "já entrei em contato" (fica salvo no navegador), abrir WhatsApp, mapa e site, e exportar a lista em CSV.
 
 ## Como rodar
 
 ```bash
 npm install
-cp .env.example .env.local   # preencha as variáveis
+cp .env.example .env.local   # preencha GOOGLE_PLACES_API_KEY e APP_PASSWORD
 npm run dev                  # http://localhost:3000
 ```
 
-Sem as variáveis do Supabase o site público funciona normalmente; login e cadastro mostram um aviso.
+### Chave do Google
 
-### Scripts
+1. No [Google Cloud](https://console.cloud.google.com), crie um projeto e **ative a cobrança**.
+2. Ative a **Places API (New)**.
+3. Crie uma chave de API (restrinja à Places API) e cole em `GOOGLE_PLACES_API_KEY`.
+
+A chave fica só no servidor e nunca vai para o navegador. Veja os custos em [docs/CUSTOS.md](docs/CUSTOS.md).
+
+### Senha
+
+`APP_PASSWORD` protege a ferramenta, porque cada busca gasta sua chave do Google. `SESSION_SECRET` (32+ caracteres aleatórios, gere com o comando do `.env.example`) assina o cookie de login. Sem uma das duas:
+
+- em desenvolvimento, sem senha o login fica desligado;
+- **em produção, o app recusa tudo** (falha fechada).
+
+O login vale por 7 dias. Trocar a senha ou o `SESSION_SECRET` derruba todas as sessões abertas. Só tentativas de senha erradas contam para o bloqueio (5 por 15 min por endereço, 30 no total).
+
+## Limites a conhecer
+
+- O Google entrega **no máximo 60 lojas por busca**. Para cobrir mais, varie o tipo de loja ("barbearia", "salão de beleza") ou busque cidades vizinhas.
+- A checagem olha só a **página inicial** de cada site, a partir do servidor. Sites protegidos contra robôs (Cloudflare e similares) aparecem como "Verificar manualmente".
+- A checagem roda **na região do servidor**. Se for hospedar, escolha uma região no Brasil (na Vercel, `gru1` em São Paulo); de longe, sites brasileiros ficam mais lentos e mais propensos a bloqueio.
+- O limite diário de buscas (`MAX_SEARCHES_PER_DAY`) e o de tentativas de senha são por instância do servidor. Em hospedagem serverless valem como freio, não como garantia.
+
+## Comandos
 
 | Comando | O que faz |
 |---|---|
 | `npm run dev` | Servidor de desenvolvimento |
 | `npm run build` / `npm start` | Build e servidor de produção |
 | `npm run lint` | ESLint |
-| `npm run typecheck` | Gera os tipos de rota e roda o TypeScript |
-| `npm test` | Testes unitários (Vitest) |
+| `npm run typecheck` | Tipos de rota + TypeScript |
+| `npm test` | Testes (Vitest) |
 
-## Configurar o Supabase
-
-1. Crie um projeto em [supabase.com](https://supabase.com) e copie a **URL** e a **anon/publishable key** (Project Settings > API) para o `.env.local`.
-2. Aplique a migration em [supabase/migrations/](supabase/migrations/): cole o conteúdo do arquivo no **SQL Editor** e execute, ou use `supabase db push` com o CLI.
-3. Em **Authentication > URL Configuration**:
-   - Site URL: `http://localhost:3000` (e a URL de produção depois).
-   - Redirect URLs: adicione exatamente `http://localhost:3000/auth/callback` (sem query string; o destino pós-login vai em cookie).
-   - Em produção, defina `NEXT_PUBLIC_SITE_URL` com a URL pública. Sem ela o app recusa montar os links de autenticação, para não mandar e-mails apontando para `localhost`.
-4. (Opcional) **Authentication > Providers > Google**: ative e informe o Client ID e o Secret criados no Google Cloud. Sem isso o botão "Continuar com o Google" volta para o login com uma mensagem de erro.
-5. Em **Authentication > Providers > Email**, decida se exige confirmação de e-mail. Com confirmação ligada, o cadastro mostra "enviamos um link"; desligada, o usuário entra direto no onboarding.
-
-> **Confirmação de e-mail em outro aparelho (opcional):** o fluxo padrão (PKCE) só funciona no mesmo navegador em que a conta foi criada. Para funcionar em qualquer aparelho, em **Authentication > Email Templates > Confirm signup**, troque o link por `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=signup`. O callback já aceita os dois formatos.
-
-> A chave `service_role` nunca vai em variável `NEXT_PUBLIC_*` e não é usada nesta fase.
-
-## Estrutura
+## Como é feito
 
 ```
 src/
   app/
-    (marketing)/   landing, preços, páginas legais
-    (auth)/        login e cadastro (+ server actions)
-    auth/callback/ retorno do OAuth e dos links de e-mail
-    onboarding/    três perguntas iniciais
-    app/           painel e perfil (área autenticada)
-  components/      ui/ (base), marketing/, auth/, app/
-  config/          site, planos e créditos, serviços
-  lib/             supabase/, auth/, validators/, phone, analysis/labels
-  proxy.ts         refresh de sessão e proteção de rotas
-supabase/migrations/   SQL versionado (RLS ativo)
-docs/                  decisões e, nas próximas fases, custos e Google Places
+    page.tsx            tela única: formulário + resultados
+    entrar/             login por senha
+    api/search          busca no Google Places
+    api/check           checa os sites (em lotes, com proteção SSRF)
+    api/cities          municípios do estado (IBGE)
+  components/search/    formulário, filtros, cartão, orquestração
+  lib/analysis/         classificação de URL, checagem de site, SSRF
+  lib/places/           cliente do Google Places e filtro por cidade
+  lib/access.ts         senha e sessão (HMAC)
+  proxy.ts              exige login em tudo, menos /entrar
 ```
 
-## Segurança (resumo)
-
-- RLS ativo em `profiles`; o cliente só lê e edita a própria linha.
-- O usuário não consegue alterar plano nem créditos pelo navegador (privilégios de update por coluna).
-- Toda entrada passa por Zod no servidor; o parâmetro `next` de redirecionamento só aceita caminhos internos.
-- Cabeçalhos de segurança básicos em [next.config.ts](next.config.ts).
+**Segurança:** como o servidor visita endereços digitados por terceiros no Google Maps, a checagem bloqueia loopback, redes privadas e o endereço de metadados da nuvem (169.254.169.254), revalida a cada redirecionamento e confere o IP no momento da conexão (contra DNS rebinding). Detalhes em [docs/DECISOES.md](docs/DECISOES.md).
