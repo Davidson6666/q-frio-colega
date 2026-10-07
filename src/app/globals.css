@@ -1,0 +1,297 @@
+@import "tailwindcss";
+
+/*
+  Design tokens.
+  Estrategia de tema: segue o sistema por padrao (prefers-color-scheme) e permite
+  fixar claro/escuro via <html data-theme="light|dark"> (ver theme-toggle.tsx).
+  Sem JS o site continua respeitando o sistema.
+
+  Um unico acento (esmeralda). Cores semanticas (danger/warn) so aparecem em
+  estados funcionais, nunca como decoracao.
+
+  Regra de raios: botoes e chips = pilula; campos = --radius-field;
+  cartoes = --radius-card (casca externa) e metade menos o padding no miolo.
+
+  Escala de z-index: nav 40, popover/menu 50, toast 60. Nada alem disso.
+*/
+:root {
+  color-scheme: light dark;
+
+  --background: #f6f7f7;
+  --surface: #fcfcfc;
+  --surface-2: #eff1f1;
+  --foreground: #0e1214;
+  --muted: #56606a;
+  --line: #e2e5e7;
+  --field-line: #868e96;
+
+  --accent: #047857;
+  --accent-hover: #036a4d;
+  --accent-foreground: #f3fbf7;
+  --accent-soft: #dcf3e8;
+  --accent-ink: #065f46;
+
+  --danger: #b42318;
+  --danger-soft: #fde7e4;
+  --warn: #8a5a00;
+  --warn-soft: #fbf0d3;
+
+  --elev-soft:
+    0 1px 2px rgb(14 18 20 / 0.05), 0 18px 40px -18px rgb(10 50 35 / 0.18);
+  --elev-lift:
+    0 2px 4px rgb(14 18 20 / 0.05), 0 28px 60px -24px rgb(10 50 35 / 0.28);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --background: #0a0c0e;
+    --surface: #111417;
+    --surface-2: #181c20;
+    --foreground: #eaeef0;
+    --muted: #98a1a9;
+    --line: #22282d;
+    --field-line: #66717b;
+
+    --accent: #34d399;
+    --accent-hover: #5be0ae;
+    --accent-foreground: #03140d;
+    --accent-soft: #0e2c20;
+    --accent-ink: #6ee7b7;
+
+    --danger: #f0867c;
+    --danger-soft: #2e1412;
+    --warn: #e9b85a;
+    --warn-soft: #2c2310;
+
+    --elev-soft: 0 1px 2px rgb(0 0 0 / 0.4), 0 18px 40px -18px rgb(0 0 0 / 0.6);
+    --elev-lift: 0 2px 4px rgb(0 0 0 / 0.4), 0 28px 60px -24px rgb(0 0 0 / 0.7);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --background: #0a0c0e;
+  --surface: #111417;
+  --surface-2: #181c20;
+  --foreground: #eaeef0;
+  --muted: #98a1a9;
+  --line: #22282d;
+  --field-line: #66717b;
+
+  --accent: #34d399;
+  --accent-hover: #5be0ae;
+  --accent-foreground: #03140d;
+  --accent-soft: #0e2c20;
+  --accent-ink: #6ee7b7;
+
+  --danger: #f0867c;
+  --danger-soft: #2e1412;
+  --warn: #e9b85a;
+  --warn-soft: #2c2310;
+
+  --elev-soft: 0 1px 2px rgb(0 0 0 / 0.4), 0 18px 40px -18px rgb(0 0 0 / 0.6);
+  --elev-lift: 0 2px 4px rgb(0 0 0 / 0.4), 0 28px 60px -24px rgb(0 0 0 / 0.7);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-field: var(--field-line);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  --radius-field: 0.875rem;
+  --radius-card: 1.5rem;
+
+  --shadow-soft: var(--elev-soft);
+  --shadow-lift: var(--elev-lift);
+
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+html {
+  accent-color: var(--accent);
+  scrollbar-color: var(--field-line) transparent;
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Campos: so mostra erro visual depois da interacao do usuario. */
+input:user-invalid,
+textarea:user-invalid {
+  border-color: var(--danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Utilitario: esconde visualmente mas mantem na arvore de acessibilidade. */
+.visually-hidden {
+  position: absolute;
+  clip-path: inset(50%);
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  white-space: nowrap;
+}
+
+/* Faixa horizontal com snap, sem barra visivel. */
+.snap-row {
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.snap-row::-webkit-scrollbar {
+  display: none;
+}
+.snap-row > * {
+  scroll-snap-align: start;
+}
+
+/*
+  Theme toggle icon. The icon shown is the one for the theme you would switch to,
+  resolved purely in CSS so there is no flash before hydration.
+*/
+.theme-icon-sun {
+  display: none;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .theme-icon-sun {
+    display: block;
+  }
+  :root:not([data-theme="light"]) .theme-icon-moon {
+    display: none;
+  }
+}
+:root[data-theme="dark"] .theme-icon-sun {
+  display: block;
+}
+:root[data-theme="dark"] .theme-icon-moon {
+  display: none;
+}
+
+/*
+  Mobile menu: native popover sheet. Enter/exit use @starting-style and
+  allow-discrete transitions, so no JS animation is needed.
+*/
+.menu-sheet {
+  opacity: 0;
+  transform: translateY(-0.75rem);
+  transition:
+    opacity 0.4s var(--ease-spring),
+    transform 0.4s var(--ease-spring),
+    display 0.4s allow-discrete,
+    overlay 0.4s allow-discrete;
+}
+.menu-sheet:popover-open {
+  opacity: 1;
+  transform: none;
+}
+@starting-style {
+  .menu-sheet:popover-open {
+    opacity: 0;
+    transform: translateY(-0.75rem);
+  }
+}
+
+/* FAQ disclosure marker rotation. */
+details > summary {
+  list-style: none;
+}
+details > summary::-webkit-details-marker {
+  display: none;
+}
+details[open] > summary .faq-icon {
+  transform: rotate(45deg);
+}
+
+/*
+  Staggered entrance (hero). Reading order is the message: headline, subtext,
+  actions, then the visual. Collapses to no animation with reduced motion.
+*/
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .rise {
+    animation: rise 0.9s var(--ease-spring) both;
+    animation-delay: calc(var(--i, 0) * 90ms);
+  }
+}
+
+/*
+  Scroll reveal. Progressive enhancement: only browsers with scroll-driven
+  animations fade elements in as they enter the viewport; everywhere else (and
+  without JS) the content is simply visible. Never hide content by default.
+*/
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .reveal {
+      animation: rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 40%;
+    }
+  }
+}
