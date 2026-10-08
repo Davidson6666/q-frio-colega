@@ -30,6 +30,7 @@ export function toPlaceResult(place: GooglePlace): PlaceResult {
     phone: place.nationalPhoneNumber ?? null,
     whatsapp: mobileWhatsapp(place.nationalPhoneNumber),
     websiteUrl: place.websiteUri?.trim() || null,
+    socials: [],
     mapsUrl: place.googleMapsUri ?? null,
     rating: place.rating ?? null,
     reviewsCount: place.userRatingCount ?? null,

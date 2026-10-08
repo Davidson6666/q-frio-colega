@@ -32,6 +32,38 @@ const SOCIAL_HOSTS = [
   "shopee.com.br",
   "mercadolivre.com.br",
   "olx.com.br",
+  // Booking pages, forms and page builders: a link, but not the business's own site.
+  "easybarber.com.br",
+  "trinks.com",
+  "booksy.com",
+  "calendly.com",
+  "wa.link",
+  "forms.gle",
+  "docs.google.com",
+  "drive.google.com",
+  "canva.com",
+  "carrd.co",
+  "taplink.cc",
+  "campsite.bio",
+] as const;
+
+/**
+ * Hosts that show up in "website" fields by mistake: free webmail home pages and
+ * search engines. They say nothing about a site, so the business counts as having none.
+ */
+const NOT_A_SITE_HOSTS = [
+  "gmail.com",
+  "hotmail.com",
+  "outlook.com",
+  "yahoo.com",
+  "yahoo.com.br",
+  "uol.com.br",
+  "bol.com.br",
+  "ig.com.br",
+  "terra.com.br",
+  "google.com",
+  "google.com.br",
+  "bing.com",
 ] as const;
 
 export type UrlKind = "none" | "social" | "own" | "invalid";
@@ -53,6 +85,9 @@ export function classifyUrl(raw: string | null | undefined): UrlKind {
   if (url.protocol !== "http:" && url.protocol !== "https:") return "invalid";
 
   const host = url.hostname.toLowerCase();
+  // Exact host only ("www." allowed): docs.google.com is a platform link, not noise.
+  const bareHost = host.replace(/^www\./, "");
+  if ((NOT_A_SITE_HOSTS as readonly string[]).includes(bareHost)) return "none";
   if (SOCIAL_HOSTS.some((domain) => hostMatches(host, domain))) return "social";
   return "own";
 }

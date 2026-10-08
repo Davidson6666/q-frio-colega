@@ -10,6 +10,7 @@ const item = (over: Partial<ResultItem> = {}): ResultItem => ({
   phone: null,
   whatsapp: null,
   websiteUrl: null,
+  socials: [],
   mapsUrl: null,
   rating: null,
   reviewsCount: null,

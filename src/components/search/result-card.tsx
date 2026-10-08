@@ -1,5 +1,9 @@
 import {
   ArrowSquareOut,
+  FacebookLogo,
+  InstagramLogo,
+  LinkSimple,
+  MagnifyingGlass,
   MapPin,
   MapTrifold,
   Phone,
@@ -16,16 +20,40 @@ import { cn } from "@/lib/utils";
 
 const linkClass = buttonVariants({ variant: "secondary", size: "sm", className: "gap-1.5" });
 
+function socialInfo(url: string) {
+  const host = new URL(url).hostname.toLowerCase();
+  if (host.includes("instagram")) return { label: "Instagram", Icon: InstagramLogo };
+  if (host.includes("facebook") || host === "fb.com" || host === "fb.me") return { label: "Facebook", Icon: FacebookLogo };
+  return { label: "Rede social", Icon: LinkSimple };
+}
+
+/** One link per network, http(s) only (these URLs come from third-party data). */
+function socialLinks(urls: string[]) {
+  const seen = new Set<string>();
+  const links: Array<{ url: string; label: string; Icon: typeof LinkSimple }> = [];
+  for (const url of urls) {
+    if (classifyUrl(url) === "invalid") continue;
+    const info = socialInfo(url);
+    if (seen.has(info.label)) continue;
+    seen.add(info.label);
+    links.push({ url, ...info });
+  }
+  return links;
+}
+
 /**
  * One store with its diagnosis. Double-bezel: an outer shell holds an inner
  * core with concentric radii.
  */
 export function ResultCard({
   item,
+  cityLabel,
   contacted,
   onToggleContacted,
 }: {
   item: ResultItem;
+  /** "Campo Mourão PR": makes the "Pesquisar" link specific to the right city. */
+  cityLabel: string;
   contacted: boolean;
   onToggleContacted: (id: string) => void;
 }) {
@@ -33,6 +61,10 @@ export function ResultCard({
   const checkboxId = `contacted-${item.id}`;
   const reviews = item.reviewsCount ?? 0;
   // Only http(s) links are rendered: a javascript: or data: URL must never become an href.
+  const socials = socialLinks(item.socials);
+  // No site of its own: offer a quick way to double-check that the data is not just incomplete.
+  const showSearch = item.status === "NO_WEBSITE" || item.status === "SOCIAL_ONLY";
+  const searchHref = `https://www.google.com/search?q=${encodeURIComponent(`${item.name} ${cityLabel}`)}`;
   const siteHref = item.websiteUrl && classifyUrl(item.websiteUrl) !== "invalid" ? item.websiteUrl : null;
 
   return (
@@ -66,9 +98,7 @@ export function ResultCard({
               </span>
               <span>({reviews} avaliações)</span>
             </span>
-          ) : (
-            <span className="text-muted">Sem avaliações</span>
-          )}
+          ) : null}
           {item.phone ? (
             <a
               href={`tel:${item.phone.replace(/[^\d+]/g, "")}`}
@@ -108,6 +138,18 @@ export function ResultCard({
             <a href={item.mapsUrl} target="_blank" rel="noopener noreferrer" className={linkClass}>
               <MapTrifold size={18} weight="regular" aria-hidden />
               Mapa
+            </a>
+          ) : null}
+          {socials.map(({ url, label, Icon }) => (
+            <a key={label} href={url} target="_blank" rel="noopener noreferrer" className={linkClass}>
+              <Icon size={18} weight="regular" aria-hidden />
+              {label}
+            </a>
+          ))}
+          {showSearch ? (
+            <a href={searchHref} target="_blank" rel="noopener noreferrer" className={linkClass}>
+              <MagnifyingGlass size={18} weight="regular" aria-hidden />
+              Pesquisar
             </a>
           ) : null}
           {siteHref ? (

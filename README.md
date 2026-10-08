@@ -18,21 +18,33 @@ Dá para filtrar por situação, ordenar, marcar "já entrei em contato" (fica s
 
 ```bash
 npm install
-cp .env.example .env.local   # preencha GOOGLE_PLACES_API_KEY e APP_PASSWORD
+cp .env.example .env.local   # opcional em desenvolvimento
 npm run dev                  # http://localhost:3000
 ```
 
-### Chave do Google
+Não precisa de conta nem de chave: sem configurar nada, ele usa o Overture Maps (grátis).
 
-1. No [Google Cloud](https://console.cloud.google.com), crie um projeto e **ative a cobrança**.
-2. Ative a **Places API (New)**.
-3. Crie uma chave de API (restrinja à Places API) e cole em `GOOGLE_PLACES_API_KEY`.
+## De onde vêm as lojas
 
-A chave fica só no servidor e nunca vai para o navegador. Veja os custos em [docs/CUSTOS.md](docs/CUSTOS.md).
+**Overture Maps (padrão, grátis).** Conjunto de dados aberto de lugares que reúne fontes como Meta, Microsoft e Foursquare. Ao buscar uma cidade pela primeira vez, o app baixa os lugares dela (cerca de 20 a 40 s) e guarda em `.cache/`; depois disso, trocar o tipo de loja nessa cidade é instantâneo. Em cidades muito grandes (como Curitiba), o app consulta cada tipo de loja separadamente, então cada tipo novo leva de 10 a 40 s.
+
+O que ele **não** tem, e o que isso significa:
+
+- **Sem nota nem avaliações.** O cartão não mostra nota e a ordenação por nota some.
+- **Não sabe se a loja fechou.** Algumas podem ter fechado. Use o link "Mapa" ou "Pesquisar" para conferir.
+- **Dados mensais, não em tempo real.** A versão em uso aparece embaixo dos resultados.
+- **Quase toda loja tem página no Facebook**, porque boa parte dos registros vem de lá. Por isso "Só rede social" é a situação mais comum e "Sem site" é rara. Use o filtro **"Sem site próprio"**, que junta as duas.
+- **Uma loja pode ter site que não aparece nos dados.** O cartão traz um link "Pesquisar" no Google para conferir antes de abordar.
+
+Foi medido, em Campo Mourão: o Overture tem cerca de 3.400 lugares com confiança de 0,5 ou mais (42 barbearias, 177 salões, 82 dentistas); o OpenStreetMap tinha 2 lojas de roupa. Detalhes em [docs/DECISOES.md](docs/DECISOES.md).
+
+Licença dos dados: aberta (a maioria das fontes do tema Places usa a CDLA Permissive 2.0). Confira a licença e a atribuição atuais em [docs.overturemaps.org](https://docs.overturemaps.org/attribution/).
+
+**Google Places (opcional, pago).** Traz nota, avaliações e site cadastrado pelo dono, mas exige conta com faturamento. Para usar, coloque `PLACES_PROVIDER=google` e a `GOOGLE_PLACES_API_KEY` no `.env.local`. Custos em [docs/CUSTOS.md](docs/CUSTOS.md).
 
 ### Senha
 
-`APP_PASSWORD` protege a ferramenta, porque cada busca gasta sua chave do Google. `SESSION_SECRET` (32+ caracteres aleatórios, gere com o comando do `.env.example`) assina o cookie de login. Sem uma das duas:
+`APP_PASSWORD` protege a ferramenta e `SESSION_SECRET` (32+ caracteres aleatórios, gere com o comando do `.env.example`) assina o cookie de login. Sem uma das duas:
 
 - em desenvolvimento, sem senha o login fica desligado;
 - **em produção, o app recusa tudo** (falha fechada).
@@ -41,10 +53,11 @@ O login vale por 7 dias. Trocar a senha ou o `SESSION_SECRET` derruba todas as s
 
 ## Limites a conhecer
 
-- O Google entrega **no máximo 60 lojas por busca**. Para cobrir mais, varie o tipo de loja ("barbearia", "salão de beleza") ou busque cidades vizinhas.
+- Cada busca mostra no máximo **500 lojas**; se existirem mais, o app avisa quantas são e mostra as de dados mais confiáveis. O Google, se usado, entrega no máximo 60 por busca.
 - A checagem olha só a **página inicial** de cada site, a partir do servidor. Sites protegidos contra robôs (Cloudflare e similares) aparecem como "Verificar manualmente".
 - A checagem roda **na região do servidor**. Se for hospedar, escolha uma região no Brasil (na Vercel, `gru1` em São Paulo); de longe, sites brasileiros ficam mais lentos e mais propensos a bloqueio.
-- O limite diário de buscas (`MAX_SEARCHES_PER_DAY`) e o de tentativas de senha são por instância do servidor. Em hospedagem serverless valem como freio, não como garantia.
+- O Overture precisa de **disco gravável** para o cache (`.cache/`) e de um servidor Node comum. Em hospedagem serverless sem disco persistente, cada busca refaz o download. Para uso pessoal, rodar na sua máquina ou numa VPS pequena funciona melhor.
+- O limite de buscas por dia (só Google) e o de tentativas de senha são por instância do servidor: valem como freio, não como garantia.
 
 ## Comandos
 
@@ -63,12 +76,13 @@ src/
   app/
     page.tsx            tela única: formulário + resultados
     entrar/             login por senha
-    api/search          busca no Google Places
+    api/search          busca de lojas (Overture ou Google)
     api/check           checa os sites (em lotes, com proteção SSRF)
     api/cities          municípios do estado (IBGE)
   components/search/    formulário, filtros, cartão, orquestração
   lib/analysis/         classificação de URL, checagem de site, SSRF
-  lib/places/           cliente do Google Places e filtro por cidade
+  lib/geo/              estados, cidades e contornos (IBGE)
+  lib/places/           Overture (DuckDB), Google, tipos de loja e mapeamento
   lib/access.ts         senha e sessão (HMAC)
   proxy.ts              exige login em tudo, menos /entrar
 ```

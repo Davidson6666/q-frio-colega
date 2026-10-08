@@ -1,9 +1,13 @@
+import { Suspense } from "react";
+import { connection } from "next/server";
 import { SignOut } from "@phosphor-icons/react/dist/ssr";
 import { logout } from "@/app/entrar/actions";
 import { SearchTool } from "@/components/search/search-tool";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/ui/logo";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { getProvider } from "@/lib/places/provider-config";
 
 export default function HomePage() {
   return (
@@ -32,9 +36,17 @@ export default function HomePage() {
           social e quem tem um site com problema.
         </p>
         <div className="mt-10">
-          <SearchTool />
+          <Suspense fallback={<Skeleton className="h-52 rounded-card" />}>
+            <Tool />
+          </Suspense>
         </div>
       </main>
     </>
   );
+}
+
+/** The data source is a server setting read per request, not baked in at build time. */
+async function Tool() {
+  await connection();
+  return <SearchTool source={getProvider()} />;
 }

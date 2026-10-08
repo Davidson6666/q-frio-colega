@@ -10,7 +10,16 @@ Foi reaproveitado do que já existia: o tema claro/escuro, os componentes base, 
 
 | Decisão | Motivo |
 |---|---|
-| Fonte de dados: **Google Places (New)** | Único campo de site confiável. OpenStreetMap é gratuito, mas muita loja com site não tem o campo preenchido, o que geraria muito falso "sem site". |
+| Fonte padrão: **Overture Maps**; **Google Places** fica opcional (`PLACES_PROVIDER`) | Sem conta nem cartão (a conta Google com faturamento não pôde ser criada). O OpenStreetMap foi medido e descartado: Campo Mourão tinha 2 lojas de roupa no mapa, Maringá 3, e Curitiba 41 barbearias/salões com só 2 com site cadastrado, e os servidores públicos da Overpass falharam em mais da metade das consultas. O Overture tem cerca de 3.400 lugares com confiança >= 0,5 só em Campo Mourão (176 salões, 48 barbearias, 118 lojas de roupa, 75 dentistas), com telefone e site. |
+| O Overture só entra com confiança >= 0,5 | Cerca de um quarto dos registros de Campo Mourão ficava abaixo disso e costuma ser antigo ou lixo. |
+| Uma cidade inteira é baixada uma vez e guardada em disco; o tipo de loja é filtrado localmente | A consulta direto no bucket leva de 20 a 40 s. Guardando a cidade, os tipos seguintes são instantâneos. A pasta `.cache/` tem uma subpasta por versão dos dados, então uma versão nova refaz o download sozinha. |
+| Cidade grande demais (acima de 50.000 registros) filtra o tipo de loja já na consulta | Medido em Curitiba: guardar a cidade inteira cortaria registros pela confiança e perderia lojas do tipo pedido sem avisar. Nesse caso cada tipo novo custa 10 a 40 s, mas a lista fica completa. |
+| O app avisa quantas lojas existem quando a lista é cortada em 500 | Curitiba tem mais de 500 barbearias. Cortar em silêncio enganaria quem acha que viu tudo. |
+| Nos dados do Overture, "Só rede social" inclui quem tem página (Facebook, Instagram) mas nenhum site; "Sem site" é quem não tem nem isso. Há um filtro "Sem site próprio" que junta os dois | Boa parte dos registros vem de páginas do Meta, então quase toda loja tem uma rede social. Separar os dois estados é mais verdadeiro, e o filtro combinado serve ao objetivo real de achar quem não tem site. |
+| Webmail (Yahoo, Gmail, UOL...) e buscadores no campo de site contam como "sem site"; páginas de agendamento e formulários contam como "só rede social" | Aparecem nos dados (um salão com `yahoo.com.br` como site, uma barbearia com página do EasyBarber). Nenhum é site próprio. |
+| O tipo de loja é uma lista fixa de categorias do Overture (`niches.ts`); texto fora da lista busca no nome da loja | O Overture usa categorias em inglês, não texto livre. Só entram ids vistos em dados reais: um id errado falha em silêncio. O app avisa quando caiu na busca por nome. |
+| O DuckDB (módulo nativo) fica fora do pacote (`serverExternalPackages`) | Módulos nativos não podem ser empacotados pelo Next. Foi testado no build de produção. |
+| A versão do Overture vem do índice oficial (STAC) e é a mais recente; há uma versão de reserva no código e `OVERTURE_RELEASE` para fixar | Versões antigas somem do bucket depois de um tempo, então fixar uma pode quebrar a busca. |
 | Acesso por **senha única** (`APP_PASSWORD`) e cookie assinado com **`SESSION_SECRET`** separado, sem banco | Cada busca gasta a chave do Google. Se o cookie fosse assinado com a própria senha, quem copiasse o cookie poderia testar senhas offline e sem limite. O cookie leva data de emissão (vale 7 dias) e uma impressão digital da senha, então trocar a senha ou o segredo derruba as sessões. Sem senha ou segredo em produção, o app recusa tudo. |
 | Só tentativas de senha **erradas** contam para o bloqueio, com um teto global além do por endereço | O cabeçalho de IP pode ser forjado fora de plataformas que o sobrescrevem, então o limite por endereço sozinho seria contornável. Login correto não gasta tentativas. |
 | Sem banco de dados | Nada precisa persistir no servidor. "Já contatei" fica no `localStorage` do navegador. Em contrapartida, não sincroniza entre aparelhos. |
@@ -41,6 +50,10 @@ O servidor busca URLs que terceiros digitaram no Google Maps, então:
 - Existem opções que desligam a proteção (`allowPrivateNetwork`, `unsafeAllowHosts`), mas são só para testes e **nenhuma rota da API as passa**.
 
 ## Pendências conhecidas
+
+- O Overture não informa se a loja fechou (o campo de situação vem vazio nesta versão) nem traz nota ou avaliações.
+- A atribuição dos dados (Overture Maps Foundation e as fontes) está só descrita no README; se um dia for publicado, confira o que o Overture exige.
+- O cache em disco não tem limpeza automática: versões antigas em `.cache/overture/` podem ser apagadas à mão.
 
 - Sem CSP definida. O script inline do tema (`theme-script.tsx`) precisaria de nonce se uma for adicionada.
 - O limite diário de buscas e os de tentativas de senha são por instância do servidor.

@@ -12,6 +12,9 @@ Garimpo: ferramenta **pessoal** (uma tela, protegida por senha) que lista lojas 
 ## Convenções técnicas
 
 - Next 16 com **Cache Components**: o que lê `cookies()`/`searchParams` precisa de `<Suspense>`. Sem `new Date()`/`Math.random()` no render. Documentação do Next em `node_modules/next/dist/docs`.
+- Fonte de dados padrão: **Overture Maps** via DuckDB (`src/lib/places/overture.ts`), em cache por cidade no disco. O Google (`google.ts`) é opcional, escolhido por `PLACES_PROVIDER`. Os dois entram por `src/lib/places/search.ts`.
+- Em `niches.ts` só entram ids de categoria vistos em dados reais do Overture; confira quantos lugares cada tipo acha antes de adicionar.
+- Cuidado ao gerar código por script de shell: barras invertidas e aspas se perdem. Prefira a ferramenta de edição de arquivos e `String.raw`.
 - Convenção `proxy.ts` (não `middleware.ts`).
 - A checagem de sites (`src/lib/analysis`) visita URLs de terceiros: **nunca** enfraquecer a proteção SSRF. As opções `allowPrivateNetwork` e `unsafeAllowHosts` são só para testes e nenhuma rota pode passá-las.
 - Regra de produto: **nunca afirmar "com problema" quando houver dúvida** (timeout, 403, Cloudflare, cadeia de certificado incompleta = "Verificar manualmente").

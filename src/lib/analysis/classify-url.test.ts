@@ -28,6 +28,23 @@ describe("classifyUrl", () => {
     expect(classifyUrl("http://www.clinica.com.br/contato")).toBe("own");
   });
 
+  it("ignores webmail and search homepages typed into the website field", () => {
+    expect(classifyUrl("http://yahoo.com.br/")).toBe("none");
+    expect(classifyUrl("https://www.gmail.com")).toBe("none");
+    expect(classifyUrl("https://google.com.br/")).toBe("none");
+  });
+
+  it("treats booking pages and form links as not an own site", () => {
+    expect(classifyUrl("http://www.easybarber.com.br/CadastroClienteWebEasyBarber?w=67&x=o")).toBe("social");
+    expect(classifyUrl("https://docs.google.com/forms/d/abc")).toBe("social");
+    expect(classifyUrl("https://calendly.com/loja")).toBe("social");
+  });
+
+  it("does not treat a normal company domain that merely contains a listed word as noise", () => {
+    expect(classifyUrl("https://gmail.com.evil.example")).toBe("own");
+    expect(classifyUrl("https://meugoogle.com.br")).toBe("own");
+  });
+
   it("rejects malformed and non-http URLs", () => {
     expect(classifyUrl("not a url")).toBe("invalid");
     expect(classifyUrl("javascript:alert(1)")).toBe("invalid");

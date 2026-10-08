@@ -5,6 +5,8 @@ import { CaretDown, MagnifyingGlass } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { inputClassName } from "@/components/ui/fields";
 import { STATES, isUf } from "@/lib/geo/states";
+import { NICHES } from "@/lib/places/niches";
+import type { PlacesSource } from "@/lib/places/types";
 import { cn } from "@/lib/utils";
 
 export interface SearchInput {
@@ -14,31 +16,12 @@ export interface SearchInput {
   onlyCity: boolean;
 }
 
-const NICHE_SUGGESTIONS = [
-  "barbearia",
-  "salão de beleza",
-  "restaurante",
-  "pizzaria",
-  "lanchonete",
-  "padaria",
-  "academia",
-  "clínica odontológica",
-  "clínica de estética",
-  "pet shop",
-  "loja de roupas",
-  "oficina mecânica",
-  "auto elétrica",
-  "escritório de contabilidade",
-  "imobiliária",
-  "floricultura",
-  "material de construção",
-  "farmácia",
-];
-
 export function SearchForm({
+  source,
   busy,
   onSearch,
 }: {
+  source: PlacesSource;
   busy: boolean;
   onSearch: (input: SearchInput) => void;
 }) {
@@ -70,7 +53,8 @@ export function SearchForm({
       uf: String(data.get("uf") ?? ""),
       city: String(data.get("city") ?? "").trim(),
       niche: String(data.get("niche") ?? "").trim(),
-      onlyCity: data.get("onlyCity") === "on",
+      // Overture lists are city-exact already; only Google needs the neighbour-town filter.
+      onlyCity: source === "google" ? data.get("onlyCity") === "on" : true,
     });
   }
 
@@ -144,21 +128,29 @@ export function SearchForm({
             maxLength={60}
             list="niche-options"
             autoComplete="off"
+            aria-describedby="niche-hint"
             className={inputClassName}
           />
+          <p id="niche-hint" className="text-sm text-muted">
+            Escolha uma sugestão da lista. Outros termos procuram no nome da loja.
+          </p>
           <datalist id="niche-options">
-            {NICHE_SUGGESTIONS.map((niche) => (
-              <option key={niche} value={niche} />
+            {NICHES.map((niche) => (
+              <option key={niche.label} value={niche.label} />
             ))}
           </datalist>
         </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
-        <label className="flex items-center gap-3 text-sm">
-          <input type="checkbox" name="onlyCity" defaultChecked className="size-5 shrink-0 rounded-md" />
-          <span>Só lojas dentro da cidade (esconde as das cidades vizinhas)</span>
-        </label>
+        {source === "google" ? (
+          <label className="flex items-center gap-3 text-sm">
+            <input type="checkbox" name="onlyCity" defaultChecked className="size-5 shrink-0 rounded-md" />
+            <span>Só lojas dentro da cidade (esconde as das cidades vizinhas)</span>
+          </label>
+        ) : (
+          <span />
+        )}
 
         <Button type="submit" size="lg" disabled={busy} aria-busy={busy}>
           <MagnifyingGlass size={20} weight="bold" aria-hidden />

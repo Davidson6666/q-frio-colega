@@ -11,6 +11,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // DuckDB is a native module: keep it out of the bundle and load it from node_modules.
+  serverExternalPackages: ["@duckdb/node-api", "@duckdb/node-bindings"],
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

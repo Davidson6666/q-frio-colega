@@ -11,6 +11,7 @@ import type { ResultStatus } from "@/lib/analysis/labels";
 import { STATUS_ORDER } from "@/lib/analysis/labels";
 import type { CheckResult } from "@/lib/analysis/website-check";
 import { useContacted } from "@/lib/hooks/use-contacted";
+import type { PlacesSource } from "@/lib/places/types";
 import { buildCsv, csvFileName } from "@/lib/search/csv";
 import { sortResults } from "@/lib/search/sort";
 import type { ResultItem, SortKey } from "@/lib/search/types";
@@ -19,6 +20,7 @@ import { ResultCard } from "./result-card";
 import { SearchForm, type SearchInput } from "./search-form";
 
 type Phase = "idle" | "searching" | "checking" | "done" | "error";
+type Meta = Omit<SearchResponse, "results">;
 
 // Sites are checked in small batches, a few batches at a time: each request
 // stays short and cards update progressively instead of all at once at the end.
@@ -54,10 +56,10 @@ async function postJson<T>(url: string, body: unknown, signal: AbortSignal): Pro
   return data;
 }
 
-export function SearchTool() {
+export function SearchTool({ source }: { source: PlacesSource }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [results, setResults] = useState<ResultItem[]>([]);
-  const [fetched, setFetched] = useState(0);
+  const [meta, setMeta] = useState<Meta | null>(null);
   const [query, setQuery] = useState<SearchInput | null>(null);
   const [pendingTotal, setPendingTotal] = useState(0);
   const [error, setError] = useState<string>();
@@ -110,13 +112,17 @@ export function SearchTool() {
     setQuery(input);
 
     try {
-      const data = await postJson<SearchResponse>("/api/search", input, current.signal);
+      const { results: found, ...rest } = await postJson<SearchResponse>("/api/search", input, current.signal);
       if (current.signal.aborted) return;
 
-      setResults(data.results);
-      setFetched(data.fetched);
+      setResults(found);
+      setMeta(rest);
+      // Ratings only exist for some sources: fall back from a sort that needs them.
+      if (!found.some((item) => item.rating !== null)) {
+        setSort((previous) => (previous === "rating" || previous === "reviews" ? "promising" : previous));
+      }
 
-      const pending = data.results.filter((item) => item.status === "CHECKING");
+      const pending = found.filter((item) => item.status === "CHECKING");
       setPendingTotal(pending.length);
 
       if (pending.length === 0) {
@@ -139,6 +145,8 @@ export function SearchTool() {
     return next;
   }, [results]);
 
+  const hasRatings = useMemo(() => results.some((item) => item.rating !== null), [results]);
+
   const visible = useMemo(() => {
     const filtered = selected.size === 0 ? results : results.filter((item) => selected.has(item.status));
     return sortResults(filtered, sort);
@@ -146,11 +154,14 @@ export function SearchTool() {
 
   const stillChecking = counts.CHECKING;
 
-  function toggleStatus(status: ResultStatus) {
+  function toggleStatuses(statuses: ResultStatus[]) {
     setSelected((previous) => {
       const next = new Set(previous);
-      if (next.has(status)) next.delete(status);
-      else next.add(status);
+      const allOn = statuses.every((status) => next.has(status));
+      for (const status of statuses) {
+        if (allOn) next.delete(status);
+        else next.add(status);
+      }
       return next;
     });
   }
@@ -169,16 +180,22 @@ export function SearchTool() {
 
   return (
     <div className="grid gap-8">
-      <SearchForm busy={phase === "searching"} onSearch={handleSearch} />
+      <SearchForm source={source} busy={phase === "searching"} onSearch={handleSearch} />
 
       {phase === "error" ? <FormAlert error={error} /> : null}
 
       {phase === "searching" ? (
-        <div className="grid gap-4 md:grid-cols-2" aria-busy="true" aria-live="polite">
-          <span className="sr-only">Buscando lojas…</span>
-          {Array.from({ length: 6 }, (_, i) => (
-            <Skeleton key={i} className="h-60 rounded-[1.75rem]" />
-          ))}
+        <div className="grid gap-4" aria-busy="true" aria-live="polite">
+          <p className="text-sm leading-relaxed text-muted">
+            {source === "overture"
+              ? "Buscando… A primeira busca em uma cidade baixa os dados dela e pode levar cerca de 1 minuto. As próximas buscas na mesma cidade são instantâneas."
+              : "Buscando lojas…"}
+          </p>
+          <div className="grid gap-4 md:grid-cols-2">
+            {Array.from({ length: 6 }, (_, i) => (
+              <Skeleton key={i} className="h-60 rounded-[1.75rem]" />
+            ))}
+          </div>
         </div>
       ) : null}
 
@@ -192,7 +209,7 @@ export function SearchTool() {
         </div>
       ) : null}
 
-      {phase === "checking" || phase === "done" ? (
+      {(phase === "checking" || phase === "done") && meta ? (
         <section aria-label="Resultados" className="grid gap-6">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div aria-live="polite">
@@ -203,9 +220,13 @@ export function SearchTool() {
               </h2>
               {query ? (
                 <p className="mt-1 text-sm text-muted">
-                  {query.niche} em {query.city}, {query.uf}
-                  {query.onlyCity && fetched > results.length
-                    ? `. O Google devolveu ${fetched}; ${fetched - results.length} ficaram fora da cidade.`
+                  {meta.nicheMatch?.kind === "category" ? meta.nicheMatch.label : query.niche} em{" "}
+                  {query.city}, {query.uf}
+                  {meta.source === "google" && query.onlyCity && meta.fetched !== undefined && meta.fetched > results.length
+                    ? `. O Google devolveu ${meta.fetched}; ${meta.fetched - results.length} ficaram fora da cidade.`
+                    : ""}
+                  {meta.source === "overture" && meta.fetched !== undefined
+                    ? `. ${meta.fetched} lugares conhecidos na cidade.`
                     : ""}
                 </p>
               ) : null}
@@ -222,6 +243,27 @@ export function SearchTool() {
               Exportar CSV ({visible.length})
             </Button>
           </div>
+
+          {meta.nicheMatch?.kind === "name" ? (
+            <p className="rounded-field bg-warn-soft px-4 py-3 text-sm leading-relaxed text-warn">
+              Esse tipo de loja não está na lista, então a busca procurou &quot;{meta.nicheMatch.label}&quot;
+              no nome dos estabelecimentos. Escolha uma sugestão da lista para filtrar por categoria.
+            </p>
+          ) : null}
+
+          {meta.matched > results.length ? (
+            <p className="rounded-field bg-warn-soft px-4 py-3 text-sm leading-relaxed text-warn">
+              Existem {meta.matched} lojas desse tipo nessa cidade. A lista mostra as {results.length} com
+              os dados mais confiáveis. Para ver outras, busque um tipo de loja mais específico.
+            </p>
+          ) : null}
+
+          {meta.truncated ? (
+            <p className="rounded-field bg-warn-soft px-4 py-3 text-sm leading-relaxed text-warn">
+              Essa cidade é muito grande e a lista é parcial: só os registros mais confiáveis foram
+              carregados.
+            </p>
+          ) : null}
 
           {phase === "checking" ? (
             <div className="grid gap-2" aria-live="polite">
@@ -241,10 +283,12 @@ export function SearchTool() {
             <Filters
               counts={counts}
               selected={selected}
-              onToggle={toggleStatus}
+              onToggle={(status) => toggleStatuses([status])}
+              onToggleMany={toggleStatuses}
               onClear={() => setSelected(new Set())}
               sort={sort}
               onSort={setSort}
+              hasRatings={hasRatings}
             />
           ) : null}
 
@@ -252,8 +296,9 @@ export function SearchTool() {
             <div className="rounded-card border border-dashed border-field p-8">
               <p className="font-medium">Nenhuma loja encontrada</p>
               <p className="mt-1 max-w-[60ch] text-sm leading-relaxed text-muted">
-                Tente outro tipo de loja (por exemplo, &quot;salão de beleza&quot; em vez de
-                &quot;cabeleireiro&quot;) ou desmarque &quot;Só lojas dentro da cidade&quot;.
+                {meta.source === "overture"
+                  ? "Tente outro tipo de loja da lista de sugestões, ou um termo que apareça no nome do estabelecimento."
+                  : "Tente outro tipo de loja (por exemplo, \"salão de beleza\" em vez de \"cabeleireiro\") ou desmarque \"Só lojas dentro da cidade\"."}
               </p>
             </div>
           ) : visible.length === 0 ? (
@@ -269,6 +314,7 @@ export function SearchTool() {
                 <ResultCard
                   key={item.id}
                   item={item}
+                  cityLabel={query ? `${query.city} ${query.uf}` : ""}
                   contacted={contacted.has(item.id)}
                   onToggleContacted={toggle}
                 />
@@ -276,10 +322,18 @@ export function SearchTool() {
             </div>
           )}
 
-          {fetched >= 60 && phase === "done" ? (
+          {meta.source === "google" && (meta.fetched ?? 0) >= 60 && phase === "done" ? (
             <p className="max-w-[70ch] text-sm leading-relaxed text-muted">
-              O Google entrega no máximo 60 resultados por busca. Para cobrir mais lojas, repita
-              a busca com variações do tipo de loja ou com cidades vizinhas.
+              O Google entrega no máximo 60 resultados por busca. Para cobrir mais lojas, repita a
+              busca com variações do tipo de loja ou com cidades vizinhas.
+            </p>
+          ) : null}
+
+          {meta.source === "overture" ? (
+            <p className="max-w-[75ch] text-sm leading-relaxed text-muted">
+              Dados do Overture Maps (versão {meta.release}), atualizados todo mês. Alguns lugares
+              podem ter fechado, e uma loja pode ter um site que não aparece nos dados: use o link
+              &quot;Pesquisar&quot; para conferir antes de abordar.
             </p>
           ) : null}
         </section>
@@ -288,17 +342,19 @@ export function SearchTool() {
       <details className="rounded-card border border-line bg-surface p-5 text-sm">
         <summary className="cursor-pointer font-medium">Como cada situação é decidida</summary>
         <dl className="mt-4 grid gap-3 leading-relaxed">
-          <Definition term="Sem site">O Google não tem nenhum site cadastrado para a loja.</Definition>
+          <Definition term="Sem site">Nenhum site nem rede social cadastrados nos dados.</Definition>
           <Definition term="Só rede social">
-            O link cadastrado é Instagram, Facebook, WhatsApp, Linktree, iFood ou similar, e não um
-            site próprio.
+            O único endereço conhecido é Instagram, Facebook, WhatsApp, Linktree, iFood, uma página de
+            agendamento ou similar, e não um site próprio.
           </Definition>
           <Definition term="Site com problema">
             O endereço não abre: domínio que não existe, servidor que recusa conexão, página
             inexistente (404), erro do servidor (500), certificado vencido ou de outro domínio, ou
             loop de redirecionamento.
           </Definition>
-          <Definition term="Site lento">Demora mais de 4 segundos para começar a responder.</Definition>
+          <Definition term="Site lento">
+            Demora mais de 4 segundos para começar a responder, em duas medições.
+          </Definition>
           <Definition term="Ruim no celular">
             Abre, mas a página não declara versão para telas pequenas.
           </Definition>
