@@ -21,6 +21,12 @@ describe("pickWebsite", () => {
     expect(pickWebsite(["https://instagram.com/loja", "https://loja.com.br"])).toBe("https://loja.com.br");
   });
 
+  it("prefers an institutional site over a social page, but not over an own site", () => {
+    const school = "http://www.cpmrondon.seed.pr.gov.br/";
+    expect(pickWebsite(["https://instagram.com/x", school])).toBe(school);
+    expect(pickWebsite([school, "https://lojadoposto.com.br"])).toBe("https://lojadoposto.com.br");
+  });
+
   it("falls back to a social page, and to null when nothing usable", () => {
     expect(pickWebsite(["https://instagram.com/loja"])).toBe("https://instagram.com/loja");
     expect(pickWebsite([])).toBeNull();

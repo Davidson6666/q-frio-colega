@@ -53,6 +53,9 @@ function initialStatus(place: PlaceResult): ResultStatus {
   switch (classifyUrl(place.websiteUrl)) {
     case "own":
       return "CHECKING";
+    case "institutional":
+      // A public body or national brand: not visited, and never flagged as a lead.
+      return "INSTITUTIONAL";
     case "invalid":
       return "UNKNOWN";
     case "social":

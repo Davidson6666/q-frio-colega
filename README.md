@@ -4,8 +4,10 @@ Ferramenta pessoal para achar lojas que precisam de site. Você escolhe **estado
 
 | Situação | Quando |
 |---|---|
-| Sem site | O Google não tem site cadastrado para a loja |
-| Só rede social | O link é Instagram, Facebook, WhatsApp, Linktree, iFood etc. |
+| Sem site | Nenhum site nem rede social cadastrados nos dados |
+| Só rede social | O único link é Instagram, Facebook, WhatsApp, Linktree, iFood, diretório, página de agendamento ou o site da marca de uma franquia |
+| Possível site | Sem site nos dados, mas um endereço montado a partir do nome responde com uma página que cita o nome **e** a cidade ou o telefone, ou que liga para a rede social da própria loja. É uma pista, não uma certeza |
+| Site institucional | Órgão público (escola estadual, prefeitura): não é cliente em potencial, então não é avaliado |
 | Site com problema | Domínio inexistente, conexão recusada, 404, erro 500, certificado vencido ou de outro domínio, loop de redirecionamento |
 | Site lento | Mais de 4 s para começar a responder |
 | Ruim no celular | Abre, mas sem a meta `viewport` |
@@ -50,6 +52,17 @@ Licença dos dados: aberta (a maioria das fontes do tema Places usa a CDLA Permi
 - **em produção, o app recusa tudo** (falha fechada).
 
 O login vale por 7 dias. Trocar a senha ou o `SESSION_SECRET` derruba todas as sessões abertas. Só tentativas de senha erradas contam para o bloqueio (5 por 15 min por endereço, 30 no total).
+
+## O que dá e o que não dá para garantir
+
+Medido em Campo Mourão (1.143 lojas de 14 tipos, 260 sites), conferindo no Chromium:
+
+- **"Site com problema" é confiável.** O navegador não abriu nenhum dos 92 sites marcados, e 14 de 15 marcados "verificar manualmente" também não abriram. Ainda assim: confira o link antes de abordar. Houve um falso alarme provável (um site de grande marca que bloqueia robôs), e alguns "sites" eram diretórios ou páginas de plataforma, não o site da loja. Perto de **1 em cada 3 sites cadastrados estava morto**, porque os dados são antigos: a loja pode ter fechado ou ido para o Instagram.
+- **"Sem site próprio" não é garantia.** O dado não conhece todos os sites. Adivinhando o domínio pelo nome em 80 lojas "sem site", cerca de 1 em cada 10 tinha site próprio. Por isso o app procura **possíveis sites** nas lojas sem site:
+  - **Forte** (nome + cidade/telefone na página, ou link para a rede social da loja): a loja sai de "Sem site próprio" e vai para "Possível site".
+  - **Fraca** (só o título da página bate com o nome): a loja **continua** em "Sem site próprio" e o cartão mostra um aviso. Nomes genéricos ("Bar dos Amigos", "Bella Pizza") existem em todo o Brasil e uma sugestão fraca pode ser outra empresa.
+  - Em restaurantes de Campo Mourão: de 134 lojas sem site, 11 tiveram sugestão, mas **só 1 forte**. Numa amostra espaçada de 150 lojas: 4 fortes, todas corretas, e 2 fracas plausíveis. A busca perde sites cujo texto na página inicial não cita cidade nem telefone (muitos geram isso com JavaScript) e nomes feitos só de palavras genéricas.
+- **Lojas fechadas:** o dado não informa. Use "Mapa" e "Pesquisar".
 
 ## Limites a conhecer
 

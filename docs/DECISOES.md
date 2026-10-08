@@ -49,14 +49,26 @@ O servidor busca URLs que terceiros digitaram no Google Maps, então:
 - Só `http` e `https`; sem compressão (nada de bombas de descompressão); corpo limitado a 2 MB; 8 s no total por tentativa.
 - Existem opções que desligam a proteção (`allowPrivateNetwork`, `unsafeAllowHosts`), mas são só para testes e **nenhuma rota da API as passa**.
 
+## Possível site e sites institucionais
+
+| Decisão | Motivo |
+|---|---|
+| Para lojas sem site nos dados, o app monta até 4 endereços a partir do nome (`pizzariafornetto.com.br`, `.com`, e a parte distintiva do nome) e confere se a página é da loja | Medido: cerca de 1 em cada 10 lojas "sem site" tinha site próprio que o dado não conhecia. O cliente nunca envia endereços, só nomes; o servidor monta os domínios e usa a mesma proteção contra SSRF da checagem. |
+| **Forte** = nome + cidade ou telefone na página, **ou** a página liga para a rede social que o dado já conhece da loja | Uma loja homônima em outra cidade não consegue imitar isso. O sinal de rede social está testado só na lógica: não disparou em nenhum caso real da medição. |
+| **Fraca** = só o título da página (ou o nome do site) contém o nome inteiro da loja; vale apenas em `.com.br` e com nome de 9+ letras | A primeira versão aceitava o título em qualquer domínio e gerou falsos claros (`mendes.com`, `babykids.com`, `orthodontic.com`, uma igreja que caiu num site nacional). Nome com palavra só nunca basta: "Pet shop Búfalo" casaria com uma associação de criadores de búfalo. |
+| Só a evidência **forte** tira a loja de "Sem site próprio"; a fraca fica como aviso no cartão | Em restaurantes de Campo Mourão, 10 de 11 sugestões eram fracas, quase todas de nomes genéricos. Esconder um lead por uma sugestão que pode ser de outra empresa custa mais que uma conferência a mais. |
+| Palavras genéricas ("barbearia", "central", "dr"...) e a própria cidade não contam como nome; nomes só com palavras genéricas não geram candidato | Evidência por palavra comum não prova nada. Custo: "Center Clínica" não é encontrada. |
+| Site de **governo** (`.gov.br`, `.jus.br`...) vira "Site institucional" e não é avaliado | Uma escola pública não compra site, e o site dela estar fora do ar não é um lead. |
+| Site de **marca** (Ipiranga, bancos, redes de loja) conta como "sem site próprio", não como site da loja, e não é verificado | Um posto franqueado que lista só `ipiranga.com.br` não tem site próprio: é um lead. A primeira versão os chamava de "institucionais", o que escondia justamente esses leads. Antes disso, o Ipiranga aparecia como "site com problema" (erro 503 de bloqueio contra robôs). A lista de marcas é parcial. |
+| Diretórios (Guia Mais, Apontador, TripAdvisor...) contam como "só rede social" | São listagens da loja, não um site dela. |
+
 ## Pendências conhecidas
-
+- A busca de "possível site" só enxerga o texto da página inicial. Sites que montam o endereço e o telefone com JavaScript, ou que bloqueiam robôs, só entram pela evidência fraca (título) ou ficam de fora.
+- O app visita até 4 endereços por loja sem site, então uma busca grande demora mais (restaurantes de Campo Mourão: cerca de 1 minuto no total).
 - O filtro de cidade do Overture exige que o endereço traga a cidade igual à escolhida (sem acento e sem diferenciar maiúsculas). Lugares sem cidade no endereço, ou com o nome de um distrito, ficam de fora. Medido em Campo Mourão: cerca de 0,1% dos registros. É o preço de não misturar cidades vizinhas, que dividem o mesmo retângulo no mapa.
-
 - O Overture não informa se a loja fechou (o campo de situação vem vazio nesta versão) nem traz nota ou avaliações.
 - A atribuição dos dados (Overture Maps Foundation e as fontes) está só descrita no README; se um dia for publicado, confira o que o Overture exige.
 - O cache em disco não tem limpeza automática: versões antigas em `.cache/overture/` podem ser apagadas à mão.
-
 - Sem CSP definida. O script inline do tema (`theme-script.tsx`) precisaria de nonce se uma for adicionada.
 - O limite diário de buscas e os de tentativas de senha são por instância do servidor.
 - Um cookie de sessão copiado continua válido até vencer (7 dias) ou até trocar a senha ou o `SESSION_SECRET`: não há revogação individual, porque não há banco.

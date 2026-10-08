@@ -45,6 +45,66 @@ const SOCIAL_HOSTS = [
   "carrd.co",
   "taplink.cc",
   "campsite.bio",
+  // Business directories: a listing of the store, not a site of its own.
+  "guiamais.com",
+  "guiamais.com.br",
+  "telelistas.net",
+  "apontador.com.br",
+  "tripadvisor.com",
+  "tripadvisor.com.br",
+  "cylex.com.br",
+  "solutudo.com.br",
+  "yelp.com",
+] as const;
+
+/**
+ * Public bodies. A public school or town hall is not a prospect, and its website
+ * being down says nothing about a business that could buy a site.
+ */
+const GOVERNMENT_SUFFIXES = [".gov.br", ".jus.br", ".leg.br", ".mp.br", ".mil.br", ".def.br"] as const;
+
+/**
+ * Websites of large national brands, banks and chains. A franchise or branch that
+ * lists only its brand's site has no site of its own, so it counts as "no own site"
+ * (a lead), and the brand's site is never checked: its home page being slow or down
+ * says nothing about this store.
+ * Not exhaustive: add hosts here as they show up in real results.
+ */
+const BRAND_HOSTS = [
+  "ipiranga.com.br",
+  "shell.com.br",
+  "petrobras.com.br",
+  "mcdonalds.com.br",
+  "burgerking.com.br",
+  "bobs.com.br",
+  "boticario.com.br",
+  "natura.com.br",
+  "bradesco.com.br",
+  "itau.com.br",
+  "santander.com.br",
+  "bb.com.br",
+  "sicredi.com.br",
+  "sicoob.com.br",
+  "correios.com.br",
+  "magazineluiza.com.br",
+  "americanas.com.br",
+  "casasbahia.com.br",
+  "carrefour.com.br",
+  "drogasil.com.br",
+  "drogaraia.com.br",
+  "raiadrogasil.com.br",
+  "renner.com.br",
+  "cea.com.br",
+  "marisa.com.br",
+  "riachuelo.com.br",
+  "havan.com.br",
+  "leroymerlin.com.br",
+  "telhanorte.com.br",
+  "claro.com.br",
+  "vivo.com.br",
+  "tim.com.br",
+  "oi.com.br",
+  "unimed.coop.br",
 ] as const;
 
 /**
@@ -66,7 +126,13 @@ const NOT_A_SITE_HOSTS = [
   "bing.com",
 ] as const;
 
-export type UrlKind = "none" | "social" | "own" | "invalid";
+/**
+ * - own: a site that belongs to the business
+ * - social: a social page, directory, platform or brand site: something online, but
+ *   not a site of its own
+ * - institutional: a public body, not a prospect
+ */
+export type UrlKind = "none" | "social" | "own" | "institutional" | "invalid";
 
 function hostMatches(host: string, domain: string) {
   return host === domain || host.endsWith(`.${domain}`);
@@ -88,6 +154,8 @@ export function classifyUrl(raw: string | null | undefined): UrlKind {
   // Exact host only ("www." allowed): docs.google.com is a platform link, not noise.
   const bareHost = host.replace(/^www\./, "");
   if ((NOT_A_SITE_HOSTS as readonly string[]).includes(bareHost)) return "none";
+  if (GOVERNMENT_SUFFIXES.some((suffix) => host.endsWith(suffix))) return "institutional";
+  if (BRAND_HOSTS.some((domain) => hostMatches(host, domain))) return "social";
   if (SOCIAL_HOSTS.some((domain) => hostMatches(host, domain))) return "social";
   return "own";
 }

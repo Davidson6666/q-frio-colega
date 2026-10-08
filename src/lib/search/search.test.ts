@@ -90,10 +90,32 @@ describe("buildCsv", () => {
     ]);
     expect(csv.startsWith("﻿")).toBe(true);
     const [header, row] = csv.trim().split("\r\n");
-    expect(header.split(";")).toHaveLength(10);
+    expect(header.split(";")).toHaveLength(12);
     expect(row).toContain('"4,8"');
     expect(row).toContain('"https://wa.me/5544999998888"');
     expect(row).toContain('"Site com problema"');
+  });
+});
+
+describe("buildCsv with a possible site", () => {
+  it("adds the guessed address and says how strong the evidence is", () => {
+    const csv = buildCsv([
+      item({
+        status: "POSSIBLE_SITE",
+        guess: { url: "https://pizzariafornetto.com.br/", evidence: ["nome no título"], strength: "weak" },
+      }),
+      item({
+        id: "2",
+        status: "POSSIBLE_SITE",
+        guess: { url: "https://botecodonachica.com.br/", evidence: ["nome no título", "cidade", "telefone"], strength: "strong" },
+      }),
+      item({ id: "3" }),
+    ]);
+    const [, weak, strong, none] = csv.trim().split("\r\n");
+    expect(weak).toContain('"https://pizzariafornetto.com.br/";"fraca: nome no título"');
+    expect(strong).toContain('"https://botecodonachica.com.br/";"forte: nome no título, cidade, telefone"');
+    expect(none).toContain('"";"";'); // no guess: both columns empty
+    expect(weak).toContain('"Possível site"');
   });
 });
 

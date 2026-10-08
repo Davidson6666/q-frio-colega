@@ -373,3 +373,17 @@ export async function checkWebsite(url: string, options: CheckOptions = {}): Pro
   }
   return first;
 }
+
+/**
+ * Fetches a home page and returns its HTML, through the same SSRF-protected
+ * machinery as checkWebsite but without retries or classification. Used to look
+ * for evidence on guessed domains, where a quick "no" is the common answer.
+ */
+export async function fetchHomepage(
+  url: string,
+  options: CheckOptions = {},
+): Promise<{ ok: true; status: number; html: string; finalUrl: string } | { ok: false; code: string }> {
+  const attempt = await tryFetch(url, { ...DEFAULTS, timeoutMs: 6000, ...options });
+  if (attempt.kind === "error") return { ok: false, code: attempt.code };
+  return { ok: true, status: attempt.status, html: attempt.html, finalUrl: attempt.finalUrl };
+}

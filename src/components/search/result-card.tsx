@@ -24,7 +24,8 @@ function socialInfo(url: string) {
   const host = new URL(url).hostname.toLowerCase();
   if (host.includes("instagram")) return { label: "Instagram", Icon: InstagramLogo };
   if (host.includes("facebook") || host === "fb.com" || host === "fb.me") return { label: "Facebook", Icon: FacebookLogo };
-  return { label: "Rede social", Icon: LinkSimple };
+  // Directories, brand pages and booking links are links, but not social networks.
+  return { label: "Outro link", Icon: LinkSimple };
 }
 
 /** One link per network, http(s) only (these URLs come from third-party data). */
@@ -70,7 +71,13 @@ export function ResultCard({
   // No site of its own: offer a quick way to double-check that the data is not just incomplete.
   const showSearch = item.status === "NO_WEBSITE" || item.status === "SOCIAL_ONLY";
   const searchHref = `https://www.google.com/search?q=${encodeURIComponent(`${item.name} ${cityLabel}`)}`;
-  const siteHref = item.websiteUrl && classifyUrl(item.websiteUrl) === "own" ? item.websiteUrl : null;
+  // A guessed site is shown only when it is a plain http(s) site of its own (never a social page).
+  const guessHost =
+    item.guess && classifyUrl(item.guess.url) === "own"
+      ? new URL(item.guess.url).hostname.replace(/^www\./, "")
+      : null;
+  const siteKind = item.websiteUrl ? classifyUrl(item.websiteUrl) : "none";
+  const siteHref = item.websiteUrl && (siteKind === "own" || siteKind === "institutional") ? item.websiteUrl : null;
 
   return (
     <article
@@ -126,6 +133,25 @@ export function ResultCard({
             {item.check.httpStatus && !item.check.reason.includes(String(item.check.httpStatus))
               ? ` (HTTP ${item.check.httpStatus})`
               : ""}
+          </p>
+        ) : null}
+
+        {guessHost && item.guess ? (
+          <p className="mt-3 rounded-field bg-warn-soft px-3.5 py-2.5 text-sm leading-relaxed text-warn">
+            <span className="font-medium">
+              {item.guess.strength === "strong" ? "Possível site encontrado: " : "Possível site (evidência fraca): "}
+            </span>
+            <a
+              href={item.guess.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium underline underline-offset-4"
+            >
+              {guessHost}
+            </a>
+            {item.guess.strength === "strong"
+              ? `. Bate com: ${item.guess.evidence.join(", ")}. Confira antes de abordar, pode ser uma empresa de mesmo nome.`
+              : ". Só o título da página bate com o nome. Pode ser outra empresa: confira antes de abordar."}
           </p>
         ) : null}
 

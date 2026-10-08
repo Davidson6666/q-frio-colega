@@ -10,8 +10,14 @@ export type WebsiteStatus =
   | "OK"
   | "UNKNOWN";
 
-/** What the UI shows while a site is still being checked. */
-export type ResultStatus = WebsiteStatus | "CHECKING";
+/**
+ * What the UI shows for a store.
+ * - CHECKING: its site is still being visited.
+ * - POSSIBLE_SITE: no site in the data, but a domain built from the store name
+ *   answers with matching evidence. A hint to verify, never a verdict.
+ * - INSTITUTIONAL: a public body or national brand, not a prospect for a site.
+ */
+export type ResultStatus = WebsiteStatus | "CHECKING" | "POSSIBLE_SITE" | "INSTITUTIONAL";
 
 export const STATUS_META: Record<ResultStatus, { label: string; tone: BadgeTone }> = {
   NO_WEBSITE: { label: "Sem site", tone: "danger" },
@@ -21,6 +27,8 @@ export const STATUS_META: Record<ResultStatus, { label: string; tone: BadgeTone 
   SLOW: { label: "Site lento", tone: "warn" },
   OK: { label: "Site ok", tone: "accent" },
   UNKNOWN: { label: "Verificar manualmente", tone: "neutral" },
+  POSSIBLE_SITE: { label: "Possível site", tone: "warn" },
+  INSTITUTIONAL: { label: "Site institucional", tone: "neutral" },
   CHECKING: { label: "Verificando…", tone: "neutral" },
 };
 
@@ -31,7 +39,9 @@ export const STATUS_ORDER: ResultStatus[] = [
   "SOCIAL_ONLY",
   "NOT_MOBILE",
   "SLOW",
+  "POSSIBLE_SITE",
   "UNKNOWN",
   "OK",
+  "INSTITUTIONAL",
   "CHECKING",
 ];

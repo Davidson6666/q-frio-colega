@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { FormAlert } from "@/components/ui/form-alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { CheckResponse } from "@/app/api/check/route";
+import type { GuessResponse } from "@/app/api/guess/route";
 import type { SearchResponse } from "@/app/api/search/route";
 import type { ResultStatus } from "@/lib/analysis/labels";
 import { STATUS_ORDER } from "@/lib/analysis/labels";
@@ -26,6 +27,15 @@ type Meta = Omit<SearchResponse, "results">;
 // stays short and cards update progressively instead of all at once at the end.
 const BATCH_SIZE = 4;
 const CONCURRENCY = 3;
+// Looking for a site by guessing domains is a few quick requests per store.
+const GUESS_BATCH = 6;
+const GUESS_CONCURRENCY = 3;
+
+/** Stores with no site of their own in the data: the ones worth a second look. */
+const needsGuess = (item: { status: ResultStatus }) =>
+  item.status === "NO_WEBSITE" || item.status === "SOCIAL_ONLY";
+
+const digitsOnly = (value: string | null) => (value ?? "").replace(/\D/g, "").replace(/^55/, "");
 
 const chunk = <T,>(list: T[], size: number): T[][] =>
   Array.from({ length: Math.ceil(list.length / size) }, (_, i) => list.slice(i * size, i * size + size));
@@ -62,6 +72,8 @@ export function SearchTool({ source }: { source: PlacesSource }) {
   const [meta, setMeta] = useState<Meta | null>(null);
   const [query, setQuery] = useState<SearchInput | null>(null);
   const [pendingTotal, setPendingTotal] = useState(0);
+  const [guessTotal, setGuessTotal] = useState(0);
+  const [guessDone, setGuessDone] = useState(0);
   const [error, setError] = useState<string>();
   const [selected, setSelected] = useState<Set<ResultStatus>>(new Set());
   const [sort, setSort] = useState<SortKey>("promising");
@@ -100,6 +112,57 @@ export function SearchTool({ source }: { source: PlacesSource }) {
     await Promise.all(Array.from({ length: Math.min(CONCURRENCY, batches.length) }, worker));
   }
 
+  /**
+   * Looks for a site that matches stores with none in the data. A hit never settles
+   * anything: it only moves the store to "Possível site" so it can be double-checked.
+   */
+  async function runGuesses(items: ResultItem[], city: string, signal: AbortSignal) {
+    const batches = chunk(items, GUESS_BATCH);
+    let cursor = 0;
+
+    async function worker() {
+      while (cursor < batches.length && !signal.aborted) {
+        const batch = batches[cursor++];
+        let found: GuessResponse["results"] = {};
+        try {
+          found = (
+            await postJson<GuessResponse>(
+              "/api/guess",
+              {
+                city,
+                stores: batch.map((item) => ({
+                  id: item.id,
+                  name: item.name,
+                  phones: [digitsOnly(item.phone), digitsOnly(item.whatsapp)].filter((phone) => phone.length >= 8),
+                  socials: item.socials.slice(0, 4),
+                })),
+              },
+              signal,
+            )
+          ).results;
+        } catch {
+          // A failed guess just means no hint for these stores. The list is still right.
+          if (signal.aborted) return;
+        }
+        if (signal.aborted) return;
+
+        setResults((previous) =>
+          previous.map((item) => {
+            const guess = found[item.id];
+            if (!guess || !needsGuess(item)) return item;
+            // Only strong evidence takes a store out of "no own site". A weak match (just
+            // the page title) could be a namesake: wrongly hiding a lead costs more than
+            // one extra check, so it stays listed and the card carries the warning.
+            return guess.strength === "strong" ? { ...item, status: "POSSIBLE_SITE", guess } : { ...item, guess };
+          }),
+        );
+        setGuessDone((done) => done + batch.length);
+      }
+    }
+
+    await Promise.all(Array.from({ length: Math.min(GUESS_CONCURRENCY, batches.length) }, worker));
+  }
+
   async function handleSearch(input: SearchInput) {
     controller.current?.abort(); // a new search replaces the previous one
     const current = new AbortController();
@@ -123,14 +186,21 @@ export function SearchTool({ source }: { source: PlacesSource }) {
       }
 
       const pending = found.filter((item) => item.status === "CHECKING");
+      const guessable = found.filter(needsGuess);
       setPendingTotal(pending.length);
+      setGuessTotal(guessable.length);
+      setGuessDone(0);
 
-      if (pending.length === 0) {
+      if (pending.length === 0 && guessable.length === 0) {
         setPhase("done");
         return;
       }
       setPhase("checking");
-      await runChecks(pending, current.signal);
+      // Both kinds of lookup are independent, so they run side by side.
+      await Promise.all([
+        pending.length > 0 ? runChecks(pending, current.signal) : Promise.resolve(),
+        guessable.length > 0 ? runGuesses(guessable, input.city, current.signal) : Promise.resolve(),
+      ]);
       if (!current.signal.aborted) setPhase("done");
     } catch (caught) {
       if (current.signal.aborted) return;
@@ -236,7 +306,7 @@ export function SearchTool({ source }: { source: PlacesSource }) {
               variant="secondary"
               size="sm"
               onClick={downloadCsv}
-              disabled={visible.length === 0 || stillChecking > 0}
+              disabled={visible.length === 0 || phase === "checking"}
               className="gap-2"
             >
               <DownloadSimple size={18} weight="regular" aria-hidden />
@@ -268,13 +338,18 @@ export function SearchTool({ source }: { source: PlacesSource }) {
           {phase === "checking" ? (
             <div className="grid gap-2" aria-live="polite">
               <p className="text-sm text-muted">
-                Verificando sites: {pendingTotal - stillChecking} de {pendingTotal}…
+                {pendingTotal > 0
+                  ? `Verificando sites: ${pendingTotal - stillChecking} de ${pendingTotal}. `
+                  : ""}
+                {guessTotal > 0
+                  ? `Procurando possíveis sites das lojas sem site: ${Math.min(guessDone, guessTotal)} de ${guessTotal}.`
+                  : ""}
               </p>
               <progress
-                value={pendingTotal - stillChecking}
-                max={pendingTotal}
+                value={pendingTotal - stillChecking + Math.min(guessDone, guessTotal)}
+                max={pendingTotal + guessTotal}
                 className="h-2 w-full"
-                aria-label="Progresso da verificação dos sites"
+                aria-label="Progresso da análise dos sites"
               />
             </div>
           ) : null}
@@ -346,7 +421,18 @@ export function SearchTool({ source }: { source: PlacesSource }) {
           <Definition term="Sem site">Nenhum site nem rede social cadastrados nos dados.</Definition>
           <Definition term="Só rede social">
             O único endereço conhecido é Instagram, Facebook, WhatsApp, Linktree, iFood, uma página de
-            agendamento ou similar, e não um site próprio.
+            agendamento, um diretório ou o site da marca de uma franquia, e não um site próprio.
+          </Definition>
+          <Definition term="Possível site">
+            A loja não tem site nos dados, mas um endereço montado a partir do nome responde com uma
+            página que parece ser dela: o nome aparece junto com a cidade ou o telefone, ou a página
+            liga para a rede social da própria loja. Fica marcado como possível, nunca como certo.
+            Quando só o título da página bate com o nome, a evidência é fraca (pode ser uma empresa
+            de mesmo nome): a loja continua em &quot;Sem site próprio&quot; e o cartão traz só um aviso.
+          </Definition>
+          <Definition term="Site institucional">
+            O endereço é de um órgão público (escola estadual, prefeitura). Não é um cliente em
+            potencial de site, então não é avaliado.
           </Definition>
           <Definition term="Site com problema">
             O endereço não abre: domínio que não existe, servidor que recusa conexão, página

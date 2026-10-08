@@ -26,12 +26,17 @@ function httpUrls(values: string[]): string[] {
 }
 
 /**
- * Picks the website to show. A real own site beats a social page, which beats
- * nothing; webmail homepages and the like count as no website at all.
+ * Picks the website to show: an own site first, then an institutional one (a
+ * brand or public body), then a social page. Webmail homepages and the like count
+ * as no website at all.
  */
 export function pickWebsite(websites: string[]): string | null {
   const urls = httpUrls(websites);
-  return urls.find((url) => classifyUrl(url) === "own") ?? urls.find((url) => classifyUrl(url) === "social") ?? null;
+  for (const kind of ["own", "institutional", "social"] as const) {
+    const found = urls.find((url) => classifyUrl(url) === kind);
+    if (found) return found;
+  }
+  return null;
 }
 
 /** First number that can receive WhatsApp (a mobile number), canonical form. */

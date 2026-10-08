@@ -45,6 +45,31 @@ describe("classifyUrl", () => {
     expect(classifyUrl("https://meugoogle.com.br")).toBe("own");
   });
 
+  it("treats public bodies as institutional", () => {
+    expect(classifyUrl("http://www.cpmrondon.seed.pr.gov.br/")).toBe("institutional");
+    expect(classifyUrl("https://www.tjpr.jus.br")).toBe("institutional");
+    expect(classifyUrl("https://camara.leg.br")).toBe("institutional");
+  });
+
+  it("treats a brand's site as not the store's own, including subdomains", () => {
+    // A franchise that lists only its brand's site has no site of its own: it is a lead.
+    expect(classifyUrl("http://www.ipiranga.com.br")).toBe("social");
+    expect(classifyUrl("https://lojas.boticario.com.br/campo-mourao")).toBe("social");
+    expect(classifyUrl("https://www.sicredi.com.br/agencia")).toBe("social");
+  });
+
+  it("does not mistake a small business whose name merely resembles a brand", () => {
+    expect(classifyUrl("https://shellmodas.com.br")).toBe("own");
+    expect(classifyUrl("https://meuitau.com.br")).toBe("own");
+    expect(classifyUrl("https://ipiranga.com.br.evil.example")).toBe("own");
+    expect(classifyUrl("https://governo.com.br")).toBe("own");
+  });
+
+  it("treats business directories as not an own site", () => {
+    expect(classifyUrl("http://www.guiamais.com/")).toBe("social");
+    expect(classifyUrl("https://www.apontador.com.br/local/x")).toBe("social");
+  });
+
   it("rejects malformed and non-http URLs", () => {
     expect(classifyUrl("not a url")).toBe("invalid");
     expect(classifyUrl("javascript:alert(1)")).toBe("invalid");
