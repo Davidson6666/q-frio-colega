@@ -4,7 +4,67 @@ Ferramenta para achar lojas que precisam de site. Você escolhe **estado, cidade
 
 Repositório: <https://github.com/Davidson6666/q-frio-colega>
 
-**Neste arquivo:** [Como usar](#como-usar) · [Rodar na sua máquina](#rodar-na-sua-máquina) · [Publicar na Vercel](#publicar-na-vercel) · [Variáveis de ambiente](#variáveis-de-ambiente) · [Como adicionar coisas](#como-adicionar-coisas) · [O que dá e o que não dá para garantir](#o-que-dá-e-o-que-não-dá-para-garantir) · [Limites](#limites-a-conhecer)
+---
+
+# <ins>**COMO COLOCAR PRA RODAR NA SUA MÁQUINA**</ins>
+
+> **Leia só esta parte primeiro.** Com isso o projeto já abre no seu computador. O resto do arquivo é para quem vai usar a fundo ou publicar.
+
+## <ins>**1) O QUE INSTALAR (só uma vez)**</ins>
+
+| Programa | Para quê | Onde baixar | Como conferir que instalou |
+|---|---|---|---|
+| **Node.js** (versão <ins>**20.9 ou mais nova**</ins>; a versão **LTS** do site serve) | roda o projeto | <https://nodejs.org> | `node --version` |
+| **Git** | baixa o projeto | <https://git-scm.com/downloads> | `git --version` |
+
+**Só isso.** Não precisa de conta, de chave, de banco de dados nem de Docker.
+
+Depois de instalar, <ins>**feche e abra o terminal de novo**</ins> (senão ele não enxerga os programas novos).
+
+## <ins>**2) OS COMANDOS (copie e cole no terminal)**</ins>
+
+Abra o terminal: no **Windows**, o **PowerShell**; no **Mac/Linux**, o **Terminal**. Cole os quatro comandos, <ins>**um de cada vez**</ins>, esperando cada um terminar:
+
+```bash
+git clone https://github.com/Davidson6666/q-frio-colega.git
+cd q-frio-colega
+npm install
+npm run dev
+```
+
+Quando aparecer algo como `Ready`, abra no navegador: <ins>**http://localhost:3000**</ins>
+
+## <ins>**3) O QUE ESPERAR**</ins>
+
+- O <ins>**`npm install`**</ins> demora de 1 a alguns minutos na primeira vez. É normal.
+- Depois do <ins>**`npm run dev`**</ins> o terminal fica "preso" mostrando mensagens. **É assim mesmo**: é o servidor rodando. Deixe essa janela aberta enquanto usa.
+- <ins>**Precisa de internet**</ins>: a primeira busca em cada cidade baixa os dados dela e leva de 20 a 40 segundos. Depois é rápido.
+- No seu computador <ins>**não pede senha**</ins>.
+
+## <ins>**4) NO DIA A DIA**</ins>
+
+| Quero... | Comando |
+|---|---|
+| **Parar** o programa | `Ctrl + C` no terminal |
+| **Abrir de novo** outro dia | `cd q-frio-colega` e depois `npm run dev` |
+| **Atualizar** para a versão mais nova | `git pull` e depois `npm install` |
+| **Rodar os testes** | `npm test` |
+
+## <ins>**SE DER ERRO**</ins>
+
+- **`node` ou `npm` "não é reconhecido"**: feche e abra o terminal. Se continuar, instale o Node de novo.
+- **`git` "não é reconhecido"**: instale o Git e abra o terminal de novo.
+- **Erro estranho no `npm install`**: rode `node --version` e confira se é **20.9 ou mais nova**.
+- **A porta 3000 está ocupada**: o terminal avisa e usa outra. Abra o endereço que ele mostrar.
+- **Aparece "Não foi possível baixar os dados"**: confira a internet e tente de novo.
+
+### Para servir com senha (como em produção)
+
+Em vez de `npm run dev`, use `npm run build` e depois `npm start`, com as variáveis `APP_PASSWORD` e `SESSION_SECRET` definidas (veja [as variáveis](#variáveis-de-ambiente)). Sem elas, o app recusa tudo nesse modo.
+
+---
+
+**Neste arquivo, mais abaixo:** [Como usar](#como-usar) · [Publicar na Vercel](#publicar-na-vercel) · [Variáveis de ambiente](#variáveis-de-ambiente) · [Como adicionar coisas](#como-adicionar-coisas) · [O que dá e o que não dá para garantir](#o-que-dá-e-o-que-não-dá-para-garantir) · [Limites](#limites-a-conhecer)
 
 ---
 
@@ -33,28 +93,6 @@ Repositório: <https://github.com/Davidson6666/q-frio-colega>
 | Site ok | Abre normalmente |
 
 **Regra de ouro: confira antes de abordar.** Os dados são antigos e podem estar errados. Veja [o que dá e o que não dá para garantir](#o-que-dá-e-o-que-não-dá-para-garantir).
-
----
-
-## Rodar na sua máquina
-
-Precisa de **Node 20.9 ou mais novo** e do Git.
-
-```bash
-git clone https://github.com/Davidson6666/q-frio-colega.git
-cd q-frio-colega
-npm install
-npm run dev        # abre em http://localhost:3000
-```
-
-Não precisa de conta, chave nem configuração: em desenvolvimento o login fica desligado e os dados vêm do Overture Maps (grátis). O cache das cidades fica na pasta `.cache/` (ignorada pelo git).
-
-Para servir como em produção (com senha), veja [as variáveis](#variáveis-de-ambiente) e rode:
-
-```bash
-npm run build
-npm start
-```
 
 ---
 
