@@ -48,12 +48,15 @@ function socialLinks(urls: string[]) {
 export function ResultCard({
   item,
   cityLabel,
+  ratingsExpected,
   contacted,
   onToggleContacted,
 }: {
   item: ResultItem;
   /** "Campo Mourão PR": makes the "Pesquisar" link specific to the right city. */
   cityLabel: string;
+  /** Whether this data source has ratings at all. Only then is a missing one worth saying. */
+  ratingsExpected: boolean;
   contacted: boolean;
   onToggleContacted: (id: string) => void;
 }) {
@@ -61,11 +64,13 @@ export function ResultCard({
   const checkboxId = `contacted-${item.id}`;
   const reviews = item.reviewsCount ?? 0;
   // Only http(s) links are rendered: a javascript: or data: URL must never become an href.
-  const socials = socialLinks(item.socials);
+  // A social page typed into the website field is still a social page: show it once, as that.
+  const siteIsSocial = item.websiteUrl !== null && classifyUrl(item.websiteUrl) === "social";
+  const socials = socialLinks([...item.socials, ...(siteIsSocial && item.websiteUrl ? [item.websiteUrl] : [])]);
   // No site of its own: offer a quick way to double-check that the data is not just incomplete.
   const showSearch = item.status === "NO_WEBSITE" || item.status === "SOCIAL_ONLY";
   const searchHref = `https://www.google.com/search?q=${encodeURIComponent(`${item.name} ${cityLabel}`)}`;
-  const siteHref = item.websiteUrl && classifyUrl(item.websiteUrl) !== "invalid" ? item.websiteUrl : null;
+  const siteHref = item.websiteUrl && classifyUrl(item.websiteUrl) === "own" ? item.websiteUrl : null;
 
   return (
     <article
@@ -98,6 +103,8 @@ export function ResultCard({
               </span>
               <span>({reviews} avaliações)</span>
             </span>
+          ) : ratingsExpected ? (
+            <span className="text-muted">Sem avaliações</span>
           ) : null}
           {item.phone ? (
             <a

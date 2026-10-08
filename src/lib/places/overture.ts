@@ -2,7 +2,7 @@ import "server-only";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
-import { DuckDBInstance } from "@duckdb/node-api";
+import { DuckDBInstance, type DuckDBConnection } from "@duckdb/node-api";
 import type { Bbox } from "@/lib/geo/bbox";
 import { normalizeText } from "@/lib/geo/states";
 import { MIN_CONFIDENCE, type OvertureRow } from "./overture-mapping";
@@ -52,7 +52,7 @@ export async function getRelease(): Promise<string> {
   if (cachedRelease && Date.now() < cachedRelease.expiresAt) return cachedRelease.value;
 
   try {
-    const response = await fetch(RELEASE_INDEX, { signal: AbortSignal.timeout(10_000), cache: "no-store" });
+    const response = await fetch(RELEASE_INDEX, { signal: AbortSignal.timeout(5_000), cache: "no-store" });
     const data = (await response.json()) as { latest?: string };
     if (response.ok && data.latest && RELEASE_PATTERN.test(data.latest)) {
       cachedRelease = { value: data.latest, expiresAt: Date.now() + 12 * 60 * 60 * 1000 };
@@ -61,7 +61,13 @@ export async function getRelease(): Promise<string> {
   } catch {
     // Index unreachable: fall through to the last known release.
   }
-  return cachedRelease?.value ?? FALLBACK_RELEASE;
+
+  // Remember the fallback briefly. Without this every search would wait for the
+  // index timeout again, and a release that flips between searches would make the
+  // disk cache miss and re-download whole cities.
+  const value = cachedRelease?.value ?? FALLBACK_RELEASE;
+  cachedRelease = { value, expiresAt: Date.now() + 5 * 60 * 1000 };
+  return value;
 }
 
 // --- DuckDB ------------------------------------------------------------------
@@ -72,8 +78,12 @@ function getInstance(): Promise<DuckDBInstance> {
   instancePromise ??= (async () => {
     const instance = await DuckDBInstance.create(":memory:");
     const connection = await instance.connect();
-    // httpfs lets DuckDB read parquet over HTTPS/S3 with range requests.
-    await connection.run("INSTALL httpfs; LOAD httpfs; SET s3_region='us-west-2';");
+    try {
+      // httpfs lets DuckDB read parquet over HTTPS/S3 with range requests.
+      await connection.run("INSTALL httpfs; LOAD httpfs; SET s3_region='us-west-2';");
+    } finally {
+      connection.closeSync();
+    }
     return instance;
   })().catch((error) => {
     instancePromise = null; // allow a retry on the next search
@@ -109,9 +119,6 @@ async function queryCity(
   // The release is interpolated into a path, so it must match a strict pattern.
   if (!RELEASE_PATTERN.test(release)) throw new OvertureError("Versão de dados inválida.", 500);
 
-  const instance = await getInstance();
-  const connection = await instance.connect();
-
   const extra = filterClause(filter);
   const sql = `
     SELECT id,
@@ -131,17 +138,29 @@ async function queryCity(
     ORDER BY confidence DESC
     LIMIT ${ROW_CAP + 1}`;
 
-  const run = connection
-    .runAndReadAll(sql, [bbox.xmin, bbox.xmax, bbox.ymin, bbox.ymax, normalizeText(cityName), uf, MIN_CONFIDENCE, ...extra.values])
-    .then((result) => result.getRowObjectsJson() as Array<Record<string, unknown>>);
-
+  let connection: DuckDBConnection | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new OvertureError("A consulta aos dados demorou demais. Tente de novo.", 504)), QUERY_TIMEOUT_MS);
-  });
-
   let records: Array<Record<string, unknown>>;
   try {
+    // Startup is inside the try as well: a missing network, a read-only home
+    // directory for the httpfs extension or a native-module failure must all
+    // surface as the friendly message below, not as an unexpected error.
+    const instance = await getInstance();
+    const active = await instance.connect();
+    connection = active;
+
+    const run = active
+      .runAndReadAll(sql, [bbox.xmin, bbox.xmax, bbox.ymin, bbox.ymax, normalizeText(cityName), uf, MIN_CONFIDENCE, ...extra.values])
+      .then((result) => result.getRowObjectsJson() as Array<Record<string, unknown>>);
+
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        // Stop the query itself, or it keeps using CPU and bandwidth and a retry piles up on top.
+        active.interrupt();
+        reject(new OvertureError("A consulta aos dados demorou demais. Tente de novo.", 504));
+      }, QUERY_TIMEOUT_MS);
+    });
+
     records = await Promise.race([run, timeout]);
   } catch (error) {
     if (error instanceof OvertureError) throw error;
@@ -150,6 +169,7 @@ async function queryCity(
     );
   } finally {
     clearTimeout(timer);
+    connection?.closeSync(); // a connection per search would otherwise leak native memory
   }
 
   const truncated = records.length > ROW_CAP;
@@ -229,8 +249,12 @@ export async function loadCity(params: {
   if (!pending) {
     pending = queryCity(release, params.bbox, params.cityName, params.uf, params.filter)
       .then(async (snapshot) => {
-        await writeCache(key, snapshot);
-        return snapshot;
+        // A city too big to keep whole only needs to remember that fact: its rows
+        // are never used (the search asks for the store type instead), and storing
+        // tens of thousands of them would make every later search parse a huge file.
+        const stored = snapshot.truncated && !params.filter ? { ...snapshot, rows: [] } : snapshot;
+        await writeCache(key, stored);
+        return stored;
       })
       .finally(() => inFlight.delete(flightKey));
     inFlight.set(flightKey, pending);

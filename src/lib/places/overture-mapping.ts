@@ -77,16 +77,47 @@ export function toPlaceResult(row: OvertureRow): PlaceResult {
   };
 }
 
+const union = (a: string[], b: string[]) => [...new Set([...a, ...b])];
+
+/** Two records of one business: the most confident wins, but nothing is thrown away. */
+function mergeRows(a: OvertureRow, b: OvertureRow): OvertureRow {
+  const [best, other] = b.confidence > a.confidence ? [b, a] : [a, b];
+  return {
+    ...best,
+    // A less confident duplicate may be the one that knows the website or a phone.
+    phones: union(best.phones, other.phones),
+    websites: union(best.websites, other.websites),
+    socials: union(best.socials, other.socials),
+  };
+}
+
+/** What identifies "the same place" across sources, or null when it cannot be told. */
+function placeKey(row: OvertureRow): string | null {
+  const name = normalizeText(row.name);
+  const street = normalizeText(row.street ?? "");
+  if (street) return `${name}|${street}`;
+  // No street: only a shared phone number proves two records are the same place.
+  // Two branches of a chain with no address must stay separate.
+  const phone = row.phones[0]?.replace(/\D/g, "");
+  return phone ? `${name}|tel:${phone}` : null;
+}
+
 /**
  * The same business is often present twice (e.g. from Meta and from Foursquare).
- * Rows with the same name and street are treated as one; the most confident wins.
+ * Duplicates are merged, keeping every phone, website and social link they carry.
  */
 export function dedupeRows(rows: OvertureRow[]): OvertureRow[] {
-  const best = new Map<string, OvertureRow>();
+  const merged = new Map<string, OvertureRow>();
+  const unkeyed: OvertureRow[] = [];
+
   for (const row of rows) {
-    const key = `${normalizeText(row.name)}|${normalizeText(row.street ?? "")}`;
-    const current = best.get(key);
-    if (!current || row.confidence > current.confidence) best.set(key, row);
+    const key = placeKey(row);
+    if (key === null) {
+      unkeyed.push(row);
+      continue;
+    }
+    const current = merged.get(key);
+    merged.set(key, current ? mergeRows(current, row) : row);
   }
-  return [...best.values()];
+  return [...merged.values(), ...unkeyed];
 }

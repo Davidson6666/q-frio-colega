@@ -36,7 +36,7 @@ export const NICHES: Niche[] = [
   { label: "Loja de móveis", aliases: ["moveis", "marcenaria"], categories: ["furniture_store"] },
   { label: "Loja de eletrônicos", aliases: ["eletronicos", "celulares", "informatica"], categories: ["electronics_store"] },
   { label: "Material de construção", aliases: ["construcao", "ferragens"], categories: ["building_supply_store", "hardware_store"] },
-  { label: "Pet shop", aliases: ["petshop", "pet", "veterinaria", "animais"], categories: ["pet_store"] },
+  { label: "Pet shop", aliases: ["petshop", "pet"], categories: ["pet_store"] },
   { label: "Farmácia", aliases: ["drogaria"], categories: ["pharmacy"] },
   { label: "Oficina mecânica", aliases: ["oficina", "mecanica", "mecanico", "auto eletrica"], categories: ["automotive_repair"] },
   { label: "Autopeças", aliases: ["auto pecas", "pecas"], categories: ["auto_parts_store"] },

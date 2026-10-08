@@ -226,7 +226,7 @@ export function SearchTool({ source }: { source: PlacesSource }) {
                     ? `. O Google devolveu ${meta.fetched}; ${meta.fetched - results.length} ficaram fora da cidade.`
                     : ""}
                   {meta.source === "overture" && meta.fetched !== undefined
-                    ? `. ${meta.fetched} lugares conhecidos na cidade.`
+                    ? `. ${meta.fetched} lugares com endereço nessa cidade nos dados.`
                     : ""}
                 </p>
               ) : null}
@@ -315,6 +315,7 @@ export function SearchTool({ source }: { source: PlacesSource }) {
                   key={item.id}
                   item={item}
                   cityLabel={query ? `${query.city} ${query.uf}` : ""}
+                  ratingsExpected={meta.source === "google"}
                   contacted={contacted.has(item.id)}
                   onToggleContacted={toggle}
                 />

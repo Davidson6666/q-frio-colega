@@ -78,6 +78,33 @@ describe("dedupeRows", () => {
     expect(rows.map((r) => r.id).sort()).toEqual(["b", "c"]);
   });
 
+  it("keeps the website of a less confident duplicate", () => {
+    const [merged] = dedupeRows([
+      row({ id: "meta", confidence: 0.9, websites: [], socials: ["https://facebook.com/x"] }),
+      row({ id: "fsq", confidence: 0.8, websites: ["https://lojareal.com.br"], socials: [], phones: ["+554499998888"] }),
+    ]);
+    expect(merged.id).toBe("meta");
+    expect(merged.websites).toEqual(["https://lojareal.com.br"]);
+    expect(merged.phones).toContain("+554499998888");
+    expect(merged.socials).toEqual(["https://facebook.com/x"]);
+  });
+
+  it("does not merge two branches that have no street and no phone", () => {
+    const rows = dedupeRows([
+      row({ id: "a", name: "Farmácia Pague Menos", street: null, phones: [] }),
+      row({ id: "b", name: "Farmácia Pague Menos", street: null, phones: [] }),
+    ]);
+    expect(rows).toHaveLength(2);
+  });
+
+  it("merges records with no street when they share a phone number", () => {
+    const rows = dedupeRows([
+      row({ id: "a", street: null, phones: ["+554435251823"] }),
+      row({ id: "b", street: null, phones: ["+55 (44) 3525-1823"] }),
+    ]);
+    expect(rows).toHaveLength(1);
+  });
+
   it("keeps two branches of the same name on different streets", () => {
     const rows = dedupeRows([row({ id: "a" }), row({ id: "b", street: "Rua Outra, 10" })]);
     expect(rows).toHaveLength(2);

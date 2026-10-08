@@ -51,6 +51,8 @@ O servidor busca URLs que terceiros digitaram no Google Maps, então:
 
 ## Pendências conhecidas
 
+- O filtro de cidade do Overture exige que o endereço traga a cidade igual à escolhida (sem acento e sem diferenciar maiúsculas). Lugares sem cidade no endereço, ou com o nome de um distrito, ficam de fora. Medido em Campo Mourão: cerca de 0,1% dos registros. É o preço de não misturar cidades vizinhas, que dividem o mesmo retângulo no mapa.
+
 - O Overture não informa se a loja fechou (o campo de situação vem vazio nesta versão) nem traz nota ou avaliações.
 - A atribuição dos dados (Overture Maps Foundation e as fontes) está só descrita no README; se um dia for publicado, confira o que o Overture exige.
 - O cache em disco não tem limpeza automática: versões antigas em `.cache/overture/` podem ser apagadas à mão.
@@ -59,3 +61,4 @@ O servidor busca URLs que terceiros digitaram no Google Maps, então:
 - O limite diário de buscas e os de tentativas de senha são por instância do servidor.
 - Um cookie de sessão copiado continua válido até vencer (7 dias) ou até trocar a senha ou o `SESSION_SECRET`: não há revogação individual, porque não há banco.
 - Sem teste automatizado de interface commitado: o fluxo completo foi verificado manualmente com Playwright (busca simulada + verificação real de sites), mas depende de internet e de sites de terceiros, então não entrou na suíte.
+- A primeira busca em uma cidade grande leva de 35 a 45 s (consulta da cidade inteira para descobrir que ela é grande demais, mais a consulta do tipo de loja). Tentei acelerar tirando o `ORDER BY`, mas as medições variaram demais (de 4 a 33 s para a mesma consulta) para provar ganho, então não entrou. Só o tamanho do cache melhorou: uma cidade grande guarda apenas um marcador.
