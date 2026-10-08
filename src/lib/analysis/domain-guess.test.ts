@@ -269,3 +269,97 @@ describe("evidence", () => {
     expect(evidence.phone).toBe(false);
   });
 });
+
+describe("evidence is matched on whole words, whole handles and whole numbers", () => {
+  const city = "São Paulo";
+
+  it("does not match a name inside a longer word (Silva vs Silvana)", () => {
+    const evidence = evaluateEvidence({
+      name: "Barbearia Silva",
+      city,
+      phones: [],
+      html: "<title>Silvana Imóveis</title><p>Silvana Imóveis, São Paulo - SP</p>",
+    });
+    expect(evidence.name).toBe(false);
+    expect(evidence.city).toBe(true);
+    expect(evidenceStrength(evidence, "silva.com.br")).toBeNull();
+  });
+
+  it("does not trust a single short surname-like word even when it matches exactly", () => {
+    // "Silva" names thousands of businesses: with the city on the page it would otherwise be "strong".
+    const evidence = evaluateEvidence({
+      name: "Barbearia Silva",
+      city,
+      phones: [],
+      html: "<title>Início</title><p>Silva</p><p>São Paulo - SP</p>",
+    });
+    expect(evidence.name).toBe(false);
+  });
+
+  it("trusts a single long distinctive word on a whole-word match only", () => {
+    const base = { name: "Clínica Hipernefro", city: "Campo Mourão", phones: [] };
+    expect(evaluateEvidence({ ...base, html: "<p>Clínica Hipernefro em Campo Mourão</p>" }).name).toBe(true);
+    expect(evaluateEvidence({ ...base, html: "<p>Hipernefrologia avançada em Campo Mourão</p>" }).name).toBe(false);
+  });
+
+  it("does not match a city name that is the start of a longer place name", () => {
+    const evidence = evaluateEvidence({
+      name: "Studio Corte Fino",
+      city: "Campo Mourão",
+      phones: [],
+      html: "<p>Studio Corte Fino, Campo Mourãozinho</p>",
+    });
+    expect(evidence.city).toBe(false);
+  });
+
+  it("does not take another profile that merely starts with the same handle", () => {
+    const store = { name: "Mendes", city: "Campo Mourão", phones: [], socials: ["https://www.instagram.com/fiodanavalha"] };
+    expect(evaluateEvidence({ ...store, html: '<a href="https://instagram.com/fiodanavalha_studio">x</a>' }).social).toBe(false);
+    expect(evaluateEvidence({ ...store, html: '<a href="https://instagram.com/fiodanavalha.oficial">x</a>' }).social).toBe(false);
+    expect(evaluateEvidence({ ...store, html: '<a href="https://instagram.com/fiodanavalha2">x</a>' }).social).toBe(false);
+  });
+
+  it("takes the exact handle, however it is closed", () => {
+    const store = { name: "Mendes", city: "Campo Mourão", phones: [], socials: ["https://www.instagram.com/fiodanavalha"] };
+    for (const html of [
+      '<a href="https://instagram.com/fiodanavalha">x</a>',
+      '<a href="https://www.instagram.com/fiodanavalha/">x</a>',
+      '<a href="https://instagram.com/fiodanavalha?igsh=abc">x</a>',
+      "<p>Siga instagram.com/fiodanavalha.</p>",
+    ]) {
+      expect(evaluateEvidence({ ...store, html }).social, html).toBe(true);
+    }
+  });
+
+  it("does not build a phone number out of digits of different numbers", () => {
+    // The store's number ends in 3525 1823. These are item codes, not a phone number.
+    const evidence = evaluateEvidence({
+      name: "Pizzaria Fornetto",
+      city: "Campo Mourão",
+      phones: ["4435251823"],
+      html: "<p>Itens 3525, 1823 e códigos 44 e 35, 25, 18, 23</p>",
+    });
+    expect(evidence.phone).toBe(false);
+  });
+
+  it("finds the phone number in the usual written forms", () => {
+    const phones = ["4435251823"];
+    const forms = ["(44) 3525-1823", "44 3525-1823", "3525-1823", "+55 (44) 3525 1823", "44.3525.1823", "4435251823"];
+    for (const form of forms) {
+      const evidence = evaluateEvidence({ name: "Pizzaria Fornetto", city: "Campo Mourão", phones, html: `<p>Ligue ${form}</p>` });
+      expect(evidence.phone, form).toBe(true);
+    }
+  });
+
+  it("still sees the visible text when a huge script comes first", () => {
+    const html = `<head><script>var data="${"x".repeat(200_000)}"</script></head><body><p>Pizzaria Fornetto, Campo Mourão</p></body>`;
+    const evidence = evaluateEvidence({ name: "Pizzaria Fornetto", city: "Campo Mourão", phones: [], html });
+    expect(evidence.name).toBe(true);
+    expect(evidence.city).toBe(true);
+  });
+
+  it("still reads the title when a huge style block comes first", () => {
+    const html = `<head><style>${"a{b:c}".repeat(40_000)}</style><title>Pizzaria Fornetto</title></head>`;
+    expect(evaluateEvidence({ name: "Pizzaria Fornetto", city: "Campo Mourão", phones: [], html }).title).toBe(true);
+  });
+});

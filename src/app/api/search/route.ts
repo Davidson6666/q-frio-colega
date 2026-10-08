@@ -54,7 +54,7 @@ function initialStatus(place: PlaceResult): ResultStatus {
     case "own":
       return "CHECKING";
     case "institutional":
-      // A public body or national brand: not visited, and never flagged as a lead.
+      // A public body (government domain): not visited, and never flagged as a lead.
       return "INSTITUTIONAL";
     case "invalid":
       return "UNKNOWN";

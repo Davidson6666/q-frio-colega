@@ -61,7 +61,7 @@ Medido em Campo Mourão (1.143 lojas de 14 tipos, 260 sites), conferindo no Chro
 - **"Sem site próprio" não é garantia.** O dado não conhece todos os sites. Adivinhando o domínio pelo nome em 80 lojas "sem site", cerca de 1 em cada 10 tinha site próprio. Por isso o app procura **possíveis sites** nas lojas sem site:
   - **Forte** (nome + cidade/telefone na página, ou link para a rede social da loja): a loja sai de "Sem site próprio" e vai para "Possível site".
   - **Fraca** (só o título da página bate com o nome): a loja **continua** em "Sem site próprio" e o cartão mostra um aviso. Nomes genéricos ("Bar dos Amigos", "Bella Pizza") existem em todo o Brasil e uma sugestão fraca pode ser outra empresa.
-  - Em restaurantes de Campo Mourão: de 134 lojas sem site, 11 tiveram sugestão, mas **só 1 forte**. Numa amostra espaçada de 150 lojas: 4 fortes, todas corretas, e 2 fracas plausíveis. A busca perde sites cujo texto na página inicial não cita cidade nem telefone (muitos geram isso com JavaScript) e nomes feitos só de palavras genéricas.
+  - Em restaurantes de Campo Mourão: de 134 lojas sem site, 11 tiveram sugestão, mas **só 1 forte**. Em duas amostras espaçadas de 150 lojas sem site: 4 e 3 sugestões fortes, todas plausíveis, e 2 e 5 fracas, entre elas algumas ambíguas (uma "Igreja Metodista" que caiu no site de uma região da igreja, uma rede de farmácias). Os números variam com a amostra. A busca perde sites cujo texto na página inicial não cita cidade nem telefone (muitos geram isso com JavaScript) e nomes feitos só de palavras genéricas.
 - **Lojas fechadas:** o dado não informa. Use "Mapa" e "Pesquisar".
 
 ## Limites a conhecer

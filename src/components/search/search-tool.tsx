@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { CheckResponse } from "@/app/api/check/route";
 import type { GuessResponse } from "@/app/api/guess/route";
 import type { SearchResponse } from "@/app/api/search/route";
+import { classifyUrl } from "@/lib/analysis/classify-url";
 import type { ResultStatus } from "@/lib/analysis/labels";
 import { STATUS_ORDER } from "@/lib/analysis/labels";
 import type { CheckResult } from "@/lib/analysis/website-check";
@@ -149,7 +150,8 @@ export function SearchTool({ source }: { source: PlacesSource }) {
         setResults((previous) =>
           previous.map((item) => {
             const guess = found[item.id];
-            if (!guess || !needsGuess(item)) return item;
+            // The card shows only plain own sites; never relabel a store without something to show.
+            if (!guess || !needsGuess(item) || classifyUrl(guess.url) !== "own") return item;
             // Only strong evidence takes a store out of "no own site". A weak match (just
             // the page title) could be a namesake: wrongly hiding a lead costs more than
             // one extra check, so it stays listed and the card carries the warning.

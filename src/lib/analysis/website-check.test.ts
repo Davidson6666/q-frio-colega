@@ -5,6 +5,7 @@ import {
   checkWebsite,
   classifyNetworkError,
   classifyResponse,
+  decodeBody,
   type CheckOptions,
 } from "./website-check";
 
@@ -279,5 +280,38 @@ describe("classifyResponse", () => {
 
   it("formats the slow reason with a comma decimal", () => {
     expect(classifyResponse(input(200, 5200), 4000).details.reason).toContain("5,2 s");
+  });
+});
+
+describe("decodeBody", () => {
+  const latin1 = (text: string) => Buffer.from(text, "latin1");
+
+  it("reads UTF-8 by default", () => {
+    expect(decodeBody(Buffer.from("<title>Padaria Pão Quente</title>", "utf8"), "text/html")).toContain("Pão");
+  });
+
+  it("honors the charset in the Content-Type header", () => {
+    const body = latin1("<title>Padaria Pão Quente</title>");
+    expect(decodeBody(body, "text/html; charset=ISO-8859-1")).toContain("Pão");
+    expect(decodeBody(body, 'text/html; charset="windows-1252"')).toContain("Pão");
+  });
+
+  it("honors a <meta charset> in the page when the header says nothing", () => {
+    expect(decodeBody(latin1('<meta charset="iso-8859-1"><title>Pão Quente</title>'), "text/html")).toContain("Pão");
+    expect(
+      decodeBody(latin1('<meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><p>Açaí</p>'), undefined),
+    ).toContain("Açaí");
+  });
+
+  it("falls back to Windows-1252 for undeclared legacy pages", () => {
+    expect(decodeBody(latin1("<title>Padaria Pão Quente, Campo Mourão</title>"), "text/html")).toContain("Campo Mourão");
+  });
+
+  it("does not break when the declared charset is not a real one", () => {
+    expect(decodeBody(Buffer.from("<p>Olá</p>", "utf8"), "text/html; charset=nao-existe")).toContain("Olá");
+  });
+
+  it("does not turn valid UTF-8 into legacy text", () => {
+    expect(decodeBody(Buffer.from("Ação não é ação", "utf8"), undefined)).toBe("Ação não é ação");
   });
 });

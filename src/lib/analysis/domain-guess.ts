@@ -73,13 +73,13 @@ function decodeEntities(text: string): string {
 
 /** Visible text of a page, roughly: no scripts or styles, no tags, entities decoded. */
 export function pageText(html: string): string {
-  return decodeEntities(
-    html
-      .slice(0, EVIDENCE_CHARS)
-      .replace(/<script[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style[\s\S]*?<\/style>/gi, " ")
-      .replace(/<[^>]+>/g, " "),
-  );
+  // Scripts and styles are removed BEFORE cutting to the budget: a big inline script
+  // in <head> (common on site builders) would otherwise use it all up before any text.
+  const visible = html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ");
+  return decodeEntities(visible.slice(0, EVIDENCE_CHARS));
 }
 
 export interface Evidence {
@@ -117,7 +117,9 @@ export function socialNeedles(urls: string[]): string[] {
 
 /** Page title, site name and share title: where a site usually states who it is. */
 export function pageTitles(html: string): string[] {
-  const head = html.slice(0, EVIDENCE_CHARS);
+  // The whole fetched page (already capped when downloaded): share tags often come
+  // after a large inline style or script.
+  const head = html;
   const titles: string[] = [];
 
   const title = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(head)?.[1];
@@ -137,10 +139,47 @@ export function pageTitles(html: string): string[] {
 /** Letters and digits only, no accents, no spaces: "Rad Imagem" and "Radimagem" compare equal. */
 const squash = (value: string) => normalizeText(value).replace(/[^a-z0-9]/g, "");
 
+/** Whole-word match on normalized text: "silva" must not match inside "silvana". */
+function hasWord(haystack: string, phrase: string): boolean {
+  if (!phrase) return false;
+  const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?:^|[^a-z0-9])${escaped}(?:[^a-z0-9]|$)`).test(haystack);
+}
+
+/**
+ * Whether `haystack` contains the profile path as a complete handle and not as the
+ * start of a longer one: "instagram.com/loja" is not "instagram.com/loja_studio".
+ */
+function containsHandle(haystack: string, needle: string): boolean {
+  let from = 0;
+  for (;;) {
+    const at = haystack.indexOf(needle, from);
+    if (at === -1) return false;
+    const next = haystack[at + needle.length] ?? "";
+    const after = haystack[at + needle.length + 1] ?? "";
+    const continues = /[a-z0-9_]/.test(next) || (next === "." && /[a-z0-9_]/.test(after));
+    if (!continues) return true;
+    from = at + 1;
+  }
+}
+
+/**
+ * Phone-like numbers on the page, digits only, one entry per number. Looking at
+ * numbers one by one (not at every digit on the page glued together) stops digits
+ * of different numbers, prices or postcodes from adding up to a false match.
+ */
+function phoneNumbersOn(text: string): string[] {
+  return (text.match(/\+?\d(?:[ ().-]?\d){7,}/g) ?? [])
+    .map((raw) => raw.replace(/\D/g, ""))
+    // Landline 10, mobile 11, plus country code: 12 to 13. Longer runs are two numbers glued.
+    .filter((digits) => digits.length >= 8 && digits.length <= 14);
+}
+
 /**
  * What on the page ties it to this store. `name` needs every distinctive word of
- * the name; `phone` compares the last 8 digits, so a number written with or without
- * the area code still matches.
+ * the name as a whole word, and a single word only when it is 6+ letters ("Silva" is
+ * a surname of thousands of businesses); `phone` compares the last 8 digits, so a
+ * number written with or without the area code still matches.
  */
 export function evaluateEvidence(input: {
   html: string;
@@ -153,7 +192,7 @@ export function evaluateEvidence(input: {
   const rawLower = input.html.toLowerCase();
   const text = pageText(input.html);
   const normalized = normalizeText(text);
-  const digits = text.replace(/\D/g, "");
+  const numbers = phoneNumbersOn(text);
 
   const tokens = distinctiveWords(input.name, input.city).filter((word) => word.length >= MIN_TOKEN);
   const city = normalizeText(input.city);
@@ -168,13 +207,16 @@ export function evaluateEvidence(input: {
   const titles = pageTitles(input.html).map(squash);
 
   return {
-    social: socialNeedles(input.socials ?? []).some((needle) => rawLower.includes(needle)),
+    social: socialNeedles(input.socials ?? []).some((needle) => containsHandle(rawLower, needle)),
     title: titleSlugs.some((slug) => titles.some((title) => title.includes(slug))),
-    name: tokens.length > 0 && tokens.every((token) => normalized.includes(token)),
-    city: city.length > 0 && normalized.includes(city),
+    name:
+      tokens.length > 0 &&
+      (tokens.length >= 2 || tokens[0].length >= 6) &&
+      tokens.every((token) => hasWord(normalized, token)),
+    city: hasWord(normalized, city),
     phone: input.phones.some((phone) => {
       const own = phone.replace(/\D/g, "");
-      return own.length >= 8 && digits.includes(own.slice(-8));
+      return own.length >= 8 && numbers.some((found) => found.endsWith(own.slice(-8)));
     }),
   };
 }

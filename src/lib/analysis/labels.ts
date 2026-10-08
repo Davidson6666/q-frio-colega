@@ -15,7 +15,10 @@ export type WebsiteStatus =
  * - CHECKING: its site is still being visited.
  * - POSSIBLE_SITE: no site in the data, but a domain built from the store name
  *   answers with matching evidence. A hint to verify, never a verdict.
- * - INSTITUTIONAL: a public body or national brand, not a prospect for a site.
+ * - INSTITUTIONAL: a public body (a state school, a town hall), not a prospect for a
+ *   site. A brand's site is NOT institutional: a franchise that lists only its
+ *   brand's site has no site of its own, and counts as SOCIAL_ONLY.
+ * - POSSIBLE_SITE is only for strong evidence; a weak match leaves the status as it was.
  */
 export type ResultStatus = WebsiteStatus | "CHECKING" | "POSSIBLE_SITE" | "INSTITUTIONAL";
 

@@ -2,13 +2,17 @@ import {
   ArrowSquareOut,
   FacebookLogo,
   InstagramLogo,
+  LinkedinLogo,
   LinkSimple,
   MagnifyingGlass,
   MapPin,
   MapTrifold,
   Phone,
   Star,
+  TiktokLogo,
   WhatsappLogo,
+  XLogo,
+  YoutubeLogo,
 } from "@phosphor-icons/react/dist/ssr";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -20,10 +24,19 @@ import { cn } from "@/lib/utils";
 
 const linkClass = buttonVariants({ variant: "secondary", size: "sm", className: "gap-1.5" });
 
+const NETWORKS: Array<{ label: string; Icon: typeof LinkSimple; hosts: string[] }> = [
+  { label: "Instagram", Icon: InstagramLogo, hosts: ["instagram.com"] },
+  { label: "Facebook", Icon: FacebookLogo, hosts: ["facebook.com", "fb.com", "fb.me"] },
+  { label: "TikTok", Icon: TiktokLogo, hosts: ["tiktok.com"] },
+  { label: "YouTube", Icon: YoutubeLogo, hosts: ["youtube.com", "youtu.be"] },
+  { label: "LinkedIn", Icon: LinkedinLogo, hosts: ["linkedin.com"] },
+  { label: "X", Icon: XLogo, hosts: ["x.com", "twitter.com"] },
+];
+
 function socialInfo(url: string) {
   const host = new URL(url).hostname.toLowerCase();
-  if (host.includes("instagram")) return { label: "Instagram", Icon: InstagramLogo };
-  if (host.includes("facebook") || host === "fb.com" || host === "fb.me") return { label: "Facebook", Icon: FacebookLogo };
+  const network = NETWORKS.find(({ hosts }) => hosts.some((h) => host === h || host.endsWith(`.${h}`)));
+  if (network) return { label: network.label, Icon: network.Icon };
   // Directories, brand pages and booking links are links, but not social networks.
   return { label: "Outro link", Icon: LinkSimple };
 }

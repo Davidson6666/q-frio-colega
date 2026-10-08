@@ -211,6 +211,36 @@ export function isAmbiguous(attempt: Attempt): boolean {
 // Network
 // ---------------------------------------------------------------------------
 
+function declaredCharset(contentType: string | undefined): string | null {
+  return /charset\s*=\s*["']?([\w-]+)/i.exec(contentType ?? "")?.[1] ?? null;
+}
+
+/** <meta charset="..."> or the http-equiv form, looked up in the first bytes of the page. */
+function sniffedCharset(body: Buffer): string | null {
+  const head = body.subarray(0, 4096).toString("latin1");
+  return /<meta[^>]+charset\s*=\s*["']?\s*([\w-]+)/i.exec(head)?.[1] ?? null;
+}
+
+/**
+ * Decodes a response using the charset the server or the page declares. Many older
+ * Brazilian small-business sites are ISO-8859-1: read as UTF-8, "Pão" turns into
+ * replacement characters and no accented name could ever match.
+ */
+export function decodeBody(body: Buffer, contentType: string | undefined): string {
+  const declared = declaredCharset(contentType) ?? sniffedCharset(body);
+  if (declared) {
+    try {
+      return new TextDecoder(declared).decode(body);
+    } catch {
+      // Unknown label: fall through to detection.
+    }
+  }
+  const utf8 = body.toString("utf8");
+  // Invalid UTF-8 shows up as U+FFFD. With nothing declared, Windows-1252 is the
+  // usual legacy encoding for Brazilian pages.
+  return utf8.includes("�") ? new TextDecoder("windows-1252").decode(body) : utf8;
+}
+
 function requestOnce(
   url: URL,
   o: Required<CheckOptions>,
@@ -330,7 +360,7 @@ async function tryFetch(startUrl: string, o: Required<CheckOptions>): Promise<At
         kind: "response",
         status: res.status,
         headers: res.headers,
-        html: res.body.toString("utf8"),
+        html: decodeBody(res.body, res.headers["content-type"]),
         // Total time until the final page started answering, redirects included.
         ttfbMs: res.started + res.ttfbMs - startedAt,
         finalUrl: url.toString(),
