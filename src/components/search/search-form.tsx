@@ -16,6 +16,10 @@ export interface SearchInput {
   onlyCity: boolean;
 }
 
+type CitiesStatus = "idle" | "loading" | "ready" | "error";
+
+const byName = (a: string, b: string) => a.localeCompare(b, "pt-BR");
+
 export function SearchForm({
   source,
   busy,
@@ -25,24 +29,33 @@ export function SearchForm({
   busy: boolean;
   onSearch: (input: SearchInput) => void;
 }) {
+  const [uf, setUf] = useState("");
   const [cities, setCities] = useState<string[]>([]);
+  const [status, setStatus] = useState<CitiesStatus>("idle");
   const citiesRequest = useRef<AbortController | null>(null);
 
-  // The city list is a convenience for autocomplete; typing a city always works.
-  async function loadCities(uf: string) {
+  async function selectState(value: string) {
     citiesRequest.current?.abort();
+    setUf(value);
     setCities([]);
-    if (!isUf(uf)) return;
+    if (!isUf(value)) {
+      setStatus("idle");
+      return;
+    }
 
+    setStatus("loading");
     const controller = new AbortController();
     citiesRequest.current = controller;
     try {
-      const response = await fetch(`/api/cities?uf=${uf}`, { signal: controller.signal });
-      if (!response.ok) return;
-      const data = (await response.json()) as { cities?: string[] };
-      setCities(data.cities ?? []);
+      const response = await fetch(`/api/cities?uf=${value}`, { signal: controller.signal });
+      const data = response.ok ? ((await response.json()) as { cities?: string[] }) : null;
+      if (controller.signal.aborted) return;
+
+      const list = [...(data?.cities ?? [])].sort(byName);
+      setCities(list);
+      setStatus(list.length > 0 ? "ready" : "error");
     } catch {
-      // Aborted or offline: keep the free-text field.
+      if (!controller.signal.aborted) setStatus("error");
     }
   }
 
@@ -64,7 +77,7 @@ export function SearchForm({
       className="grid gap-5 rounded-card border border-line bg-surface p-5 shadow-soft sm:p-7"
     >
       <div className="grid gap-5 md:grid-cols-[11rem_1fr_1fr]">
-        <div className="grid gap-1.5">
+        <div className="grid content-start gap-1.5">
           <label htmlFor="uf" className="text-sm font-medium">
             Estado
           </label>
@@ -73,8 +86,8 @@ export function SearchForm({
               id="uf"
               name="uf"
               required
-              defaultValue=""
-              onChange={(event) => loadCities(event.target.value)}
+              value={uf}
+              onChange={(event) => selectState(event.target.value)}
               className={cn(inputClassName, "appearance-none pe-11")}
             >
               <option value="" disabled>
@@ -95,28 +108,74 @@ export function SearchForm({
           </div>
         </div>
 
-        <div className="grid gap-1.5">
+        <div className="grid content-start gap-1.5">
           <label htmlFor="city" className="text-sm font-medium">
             Cidade
           </label>
-          <input
-            id="city"
-            name="city"
-            required
-            minLength={2}
-            maxLength={80}
-            list="city-options"
-            autoComplete="off"
-            className={inputClassName}
-          />
-          <datalist id="city-options">
-            {cities.map((city) => (
-              <option key={city} value={city} />
-            ))}
-          </datalist>
+
+          {status === "error" ? (
+            // The list could not be loaded: typing the name keeps the tool usable.
+            <>
+              <input
+                id="city"
+                name="city"
+                required
+                minLength={2}
+                maxLength={80}
+                autoComplete="off"
+                aria-describedby="city-hint"
+                className={inputClassName}
+              />
+              <p id="city-hint" className="text-sm text-warn">
+                Não consegui carregar a lista de cidades. Digite o nome da cidade.
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="relative">
+                <select
+                  // New key per state, so a city from the previous state is never kept selected.
+                  key={uf || "none"}
+                  id="city"
+                  name="city"
+                  required
+                  defaultValue=""
+                  disabled={status !== "ready"}
+                  aria-describedby="city-hint"
+                  className={cn(inputClassName, "appearance-none pe-11")}
+                >
+                  <option value="" disabled>
+                    {status === "loading"
+                      ? "Carregando cidades…"
+                      : status === "ready"
+                        ? "Selecione a cidade"
+                        : "Escolha o estado primeiro"}
+                  </option>
+                  {cities.map((city) => (
+                    <option key={city} value={city}>
+                      {city}
+                    </option>
+                  ))}
+                </select>
+                <CaretDown
+                  size={18}
+                  weight="light"
+                  className="pointer-events-none absolute end-4 top-1/2 -translate-y-1/2 text-muted"
+                  aria-hidden
+                />
+              </div>
+              <p id="city-hint" className="text-sm text-muted" aria-live="polite">
+                {status === "ready"
+                  ? `${cities.length} cidades em ordem alfabética. Digite a inicial para pular.`
+                  : status === "loading"
+                    ? "Carregando…"
+                    : "As cidades aparecem depois que você escolhe o estado."}
+              </p>
+            </>
+          )}
         </div>
 
-        <div className="grid gap-1.5">
+        <div className="grid content-start gap-1.5">
           <label htmlFor="niche" className="text-sm font-medium">
             Tipo de loja
           </label>

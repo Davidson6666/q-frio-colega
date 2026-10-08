@@ -59,7 +59,7 @@ async function searchOverture(input: StoreSearchInput): Promise<StoreSearchResul
   }
   if (!city || !bbox) {
     throw new SearchError(
-      `Não encontrei "${input.city}" em ${input.uf}. Escolha uma cidade da lista de sugestões.`,
+      `Não encontrei "${input.city}" em ${input.uf}. Escolha uma cidade da lista.`,
       400,
     );
   }

@@ -12,9 +12,11 @@ export async function GET(request: NextRequest) {
   if (!isUf(uf)) return jsonError("Estado inválido.", 400);
 
   try {
-    return NextResponse.json({ cities: await getCities(uf) });
+    // Alphabetical with Portuguese collation, so "Água Boa" sits with the A's.
+    const cities = (await getCities(uf)).sort((a, b) => a.localeCompare(b, "pt-BR"));
+    return NextResponse.json({ cities });
   } catch {
-    // The datalist is a convenience; the form still works by typing the city.
+    // The form falls back to a text field when the list is empty.
     return NextResponse.json({ cities: [] });
   }
 }
